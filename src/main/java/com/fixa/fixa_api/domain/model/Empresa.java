@@ -10,9 +10,12 @@ public class Empresa {
     private String descripcion;
     private String direccion;
     private String telefono;
+    private String email;
     private String categoria;
     private boolean permiteReservasSinUsuario;
     private boolean requiereValidacionTelefono;
+    private boolean requiereAprobacionTurno;
     private String mensajeValidacionPersonalizado;
     private boolean visibilidadPublica;
+    private boolean activo;
 }

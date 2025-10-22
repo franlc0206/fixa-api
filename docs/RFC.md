@@ -1,6 +1,6 @@
 # 🧾 RFC – Sistema de Turnos Online (Turnero Web)
 
-Versión: 1.0  
+Versión: 2.0  
 Autor: Francisco López  
 Fecha: Octubre 2025
 
@@ -8,49 +8,50 @@ Fecha: Octubre 2025
 
 ## 1. Objetivo
 
-Desarrollar una plataforma web de gestión de turnos flexible, moderna y escalable, que permita:
-
-- A los usuarios finales (clientes) consultar servicios, disponibilidad y reservar turnos de manera rápida, incluso sin necesidad de registrarse.
-- A las empresas (peluquerías, barberías, centros de estética, etc.) gestionar sus turnos, empleados, servicios, configuraciones, reservas y validaciones.
-- A los administradores del sistema (SuperAdmin) administrar las empresas registradas, moderar contenidos y tener control sobre la operación global del sistema.
-
-El sistema permitirá reservas configurables, validaciones opcionales por teléfono, gestión multiusuario y un entorno de administración completo.
+Desarrollar una plataforma web moderna y flexible para la gestión de turnos en línea, que permita a empresas de servicios (peluquerías, barberías, centros de estética, gimnasios, consultorios, etc.) ofrecer reservas a clientes de forma simple, segura y configurable.
+El sistema permitirá:
+- Alta de empresas y configuración de sus servicios, empleados y reglas.
+- Reservas configurables con aprobación, validación o confirmación automática.
+- Control granular de horarios, disponibilidad, bloqueos y notificaciones.
+- Escalabilidad para múltiples empresas (modelo multi-tenant).
 
 ---
 
 ## 2. Alcance
 
 ### Funcionalidades principales
-- Registro de empresas, empleados y servicios.
-- Configuración flexible de turnos (duración, horarios, validaciones, señas).
-- Reservas públicas (sin login) o privadas (con login).
-- Validación opcional por SMS o WhatsApp.
-- Panel de administración (backoffice) para empresas.
-- Panel de superadministración (SuperAdmin) global.
-- Notificaciones (correo o WhatsApp) para confirmaciones o recordatorios.
+- Registro de empresas y categorías.
+- Alta de empleados, servicios y disponibilidad.
+- Configuración de reglas de negocio por empresa (validaciones, reservas pendientes, etc.).
+- Reservas anónimas o con usuario registrado.
+- Validación telefónica opcional (SMS/WhatsApp).
+- Notificaciones automáticas (confirmaciones, recordatorios, cancelaciones).
+- Panel para empresa y panel de SuperAdmin.
 
-### No incluido en esta versión (posible v2.0)
-- Pasarela de pago integrada (MercadoPago, Stripe).
+### No incluido en esta versión (posible v3.0)
+- Pagos en línea (MercadoPago, Stripe).
+- Integración con Google Calendar.
 - Aplicación móvil nativa.
-- Integración automática con Google Calendar.
 
 ---
 
 ## 3. Tipos de usuarios
 
-| Rol | Descripción | Permisos principales |
-|---|---|---|
-| SuperAdmin | Control total del sistema | Alta/baja empresas, usuarios, auditoría global |
-| Empresa (Admin empresa) | Dueño o responsable de una empresa registrada | Crear servicios, configurar horarios, gestionar empleados y turnos |
-| Empleado | Persona que ofrece servicios dentro de una empresa | Consultar y gestionar turnos propios |
-| Cliente registrado | Usuario con cuenta propia | Reservar, cancelar, modificar turnos |
-| Cliente anónimo | Usuario sin cuenta | Reservar turnos rápidos con validación telefónica |
+- SuperAdmin: Control total del sistema. Permisos: alta/baja empresas, auditoría, gestión global.
+- Empresa (Admin empresa): Dueño o responsable. Permisos: alta empleados, servicios, horarios, reglas.
+- Empleado: Prestador del servicio. Permisos: visualiza y gestiona sus turnos.
+- Cliente registrado: Usuario con cuenta. Permisos: reservar, cancelar, modificar turnos.
+- Cliente anónimo: Usuario sin cuenta. Permisos: reserva con validación telefónica.
 
 ---
 
-## 4. Modelo de datos (v3.0)
+## 4. Modelo de datos (vFinal)
 
-### Tabla: `usuario`
+Nota de implementación por fases:
+- Fase 1 (MVP dev con Hibernate): usuario, empresa, empleado, servicio, disponibilidad, turno, verificacion_telefono.
+- Próximas fases: categoria, bloqueo_horario, config_regla, notificacion, auditoria.
+
+### 🧑‍💻 usuario
 - id BIGINT PK
 - nombre VARCHAR(100)
 - apellido VARCHAR(100)
@@ -60,31 +61,42 @@ El sistema permitirá reservas configurables, validaciones opcionales por teléf
 - rol ENUM('superadmin','empresa','empleado','cliente')
 - activo BOOLEAN
 
-### Tabla: `empresa`
+### 🏢 empresa
 - id BIGINT PK
 - fk_usuario_admin BIGINT FK → usuario.id
+- fk_categoria BIGINT FK → categoria.id
 - nombre VARCHAR(150)
 - descripcion TEXT
 - direccion VARCHAR(255)
 - telefono VARCHAR(30)
-- categoria VARCHAR(100)
+- email VARCHAR(150)
 - permite_reservas_sin_usuario BOOLEAN
 - requiere_validacion_telefono BOOLEAN
+- requiere_aprobacion_turno BOOLEAN
 - mensaje_validacion_personalizado TEXT
 - visibilidad_publica BOOLEAN
+- activo BOOLEAN
 
-### Tabla: `empleado`
+### 🏷️ categoria
+- id BIGINT PK
+- tipo ENUM('empresa','servicio')
+- nombre VARCHAR(100) UNIQUE
+- descripcion TEXT
+- activo BOOLEAN
+
+### 🧍‍♂️ empleado
 - id BIGINT PK
 - fk_empresa BIGINT FK → empresa.id
-- fk_usuario BIGINT FK → usuario.id (opcional)
+- fk_usuario BIGINT NULL FK → usuario.id
 - nombre VARCHAR(100)
 - apellido VARCHAR(100)
 - rol VARCHAR(100)
 - activo BOOLEAN
 
-### Tabla: `servicio`
+### 💇‍♂️ servicio
 - id BIGINT PK
 - fk_empresa BIGINT FK → empresa.id
+- fk_categoria BIGINT NULL FK → categoria.id
 - nombre VARCHAR(150)
 - descripcion TEXT
 - duracion_minutos INT
@@ -93,14 +105,22 @@ El sistema permitirá reservas configurables, validaciones opcionales por teléf
 - requiere_seña BOOLEAN
 - activo BOOLEAN
 
-### Tabla: `disponibilidad`
+### 🕓 disponibilidad
 - id BIGINT PK
 - fk_empleado BIGINT FK → empleado.id
 - dia_semana ENUM('lunes','martes','miércoles','jueves','viernes','sábado','domingo')
 - hora_inicio TIME
 - hora_fin TIME
 
-### Tabla: `turno`
+### 🚫 bloqueo_horario
+- id BIGINT PK
+- fk_empresa BIGINT FK → empresa.id
+- fk_empleado BIGINT NULL FK → empleado.id
+- fecha_inicio DATETIME
+- fecha_fin DATETIME
+- motivo VARCHAR(255)
+
+### 📅 turno
 - id BIGINT PK
 - fk_servicio BIGINT FK → servicio.id
 - fk_empleado BIGINT FK → empleado.id
@@ -109,16 +129,16 @@ El sistema permitirá reservas configurables, validaciones opcionales por teléf
 - cliente_nombre VARCHAR(100)
 - cliente_apellido VARCHAR(100)
 - cliente_telefono VARCHAR(30)
-- cliente_dni VARCHAR(20) NULL
 - cliente_email VARCHAR(150) NULL
+- cliente_dni VARCHAR(20) NULL
 - telefono_validado BOOLEAN
 - fecha_hora_inicio DATETIME
 - fecha_hora_fin DATETIME
-- estado ENUM('pendiente_aprobacion','confirmado','cancelado','completado')
+- estado ENUM('pendiente','confirmado','cancelado','completado')
 - requiere_validacion BOOLEAN
 - observaciones TEXT
 
-### Tabla: `verificacion_telefono`
+### 📱 verificacion_telefono
 - id BIGINT PK
 - telefono VARCHAR(30)
 - codigo VARCHAR(10)
@@ -128,44 +148,61 @@ El sistema permitirá reservas configurables, validaciones opcionales por teléf
 - canal ENUM('sms','whatsapp')
 - fk_turno BIGINT NULL FK → turno.id
 
-### Tabla: `seña` (opcional futuro)
+### ⚙️ config_regla
 - id BIGINT PK
-- fk_turno BIGINT FK → turno.id
-- monto DECIMAL(10,2)
-- estado ENUM('pendiente','pagada','devuelta')
-- metodo ENUM('efectivo','mp','transferencia')
+- fk_empresa BIGINT FK → empresa.id
+- clave VARCHAR(100)
+- valor VARCHAR(255)
+- tipo ENUM('bool','int','string','decimal')
+- descripcion TEXT
+- activo BOOLEAN
+
+### 💬 notificacion
+- id BIGINT PK
+- fk_turno BIGINT NULL FK → turno.id
+- fk_usuario BIGINT NULL FK → usuario.id
+- canal ENUM('email','whatsapp','sms')
+- mensaje TEXT
+- fecha_envio DATETIME
+- estado ENUM('pendiente','enviado','error')
+
+### 📜 auditoria
+- id BIGINT PK
+- fk_usuario BIGINT REFERENCES usuario(id)
+- entidad VARCHAR(100)
+- operacion ENUM('CREATE','UPDATE','DELETE','LOGIN')
+- fecha DATETIME
+- detalle JSON
 
 ---
 
-## 5. Casos de uso (resumen)
+## 5. Flujo funcional (ejemplo: Peluquería)
 
-- UC-01: Registro de empresa
-- UC-02: Alta de empleado
-- UC-03: Publicación de servicios
-- UC-04: Configuración de disponibilidad
-- UC-05: Visualización pública
-- UC-06: Solicitud de turno (registrado)
-- UC-07: Solicitud de turno (anónimo)
-- UC-08: Validación de número (SMS/WhatsApp)
-- UC-09: Aprobación de turno
-- UC-10: Gestión de turnos (cancelar/reprogramar)
-- UC-11: Panel del SuperAdmin
+- Alta de empresa: El usuario administrador crea su peluquería → se le asigna la categoría “Peluquería”.
+- Alta de empleados: Agrega empleados (ej. Manuel) y define sus horarios.
+- Alta de servicios: Carga servicios (“Corte de pelo”, “Coloración”) con duración (30 min o 1 h).
+- Configuración de reglas: Define si los turnos deben aprobarse, si hay validación telefónica, etc.
+- Disponibilidad: Manuel trabaja de lunes a viernes, de 9:00 a 18:00, con turnos de 30 min.
+- Publicación: La empresa habilita visibilidad pública.
+- Reserva del cliente: Un cliente selecciona un horario libre y reserva. Si la empresa usa “pendiente de aprobación”: el turno queda en estado pendiente. Si usa “validación telefónica”: se envía un código vía SMS/WhatsApp.
+- Confirmación: Al validarse o aprobarse, el turno pasa a confirmado.
+- Notificación: Se envía confirmación o recordatorio automático.
 
 ---
 
-## 6. Arquitectura técnica sugerida
+## 6. Arquitectura técnica
 
-- Frontend público: React
-- Backoffice empresa + SuperAdmin: React
+- Frontend público: React / Next.js
+- Backoffice empresa: React (Panel)
 - Backend: Java Spring Boot
-- Base de datos: MySQL (local dev) / (prod a definir)
-- Mensajería/validación: Twilio / WhatsApp Cloud API
-- Hosting: Render / Railway / AWS / DonWeb / Clever Cloud
-- Escalabilidad: Arquitectura modular, API REST, futura GraphQL
+- Base de datos: MySQL
+- Mensajería: Twilio / WhatsApp Cloud API
+- Infraestructura: AWS / Railway / DonWeb / Render
+- Arquitectura: Hexagonal (Domain / Application / Infrastructure)
 
-Estructura de código (Clean/Hexagonal):
+Estructura de paquetes:
 ```
-src/main/java/com/fixa/fixa_api/
+src/main/java/com/fixa/turnero/
   domain/
     model/
     repository/
@@ -175,12 +212,8 @@ src/main/java/com/fixa/fixa_api/
     in/
       web/
       messaging/
-      scheduler/
     out/
       persistence/
-        entity/
-        repository/
-        mapper/
       sms/
       email/
     config/
@@ -188,55 +221,49 @@ src/main/java/com/fixa/fixa_api/
 
 ---
 
-## 7. Roadmap de Seguridad – Registro y Login con OAuth2.0
+## 7. Seguridad – Roadmap (OAuth2.0 + MFA)
 
-### Fase 1: MVP – Seguridad base y registro manual
-- Dependencias: `spring-boot-starter-security`, `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`.
-- Entidades: `UsuarioEntity` (id, email, passwordHash, rol, activo).
-- Repos: `UsuarioRepository` (`findByEmail`).
-- Servicios: `AuthService` (`register`, `login`).
-- Seguridad: endpoints públicos/protegidos.
-- Passwords: `BCryptPasswordEncoder`.
-- Tokens: UUID/DB o JWT opcional.
-
-### Fase 2: Autenticación federada (OAuth2.0 Social Login)
-- Dependencia: `spring-boot-starter-oauth2-client`.
-- Configuración `application.yml` (Google, etc.).
-- Flujo: React → Provider → callback → alta/merge usuario.
-- `OAuth2SuccessHandler`: asignar rol base `CLIENTE`.
-
-### Fase 3: Endurecimiento y administración de seguridad
-- Módulo `security` independiente.
-- MFA por SMS/WhatsApp.
-- Revocación de tokens y auditoría.
-- Rate limit, CAPTCHA, recuperación de contraseña.
+- Fase 1 (MVP)
+  - Login clásico con email/password (BCrypt)
+  - Roles: superadmin, empresa, empleado, cliente
+  - Endpoints públicos: /auth, /health
+- Fase 2
+  - OAuth2 (Google, Facebook)
+  - Alta automática del usuario cliente tras login social
+- Fase 3
+  - MFA por SMS/WhatsApp
+  - Auditoría de logins
+  - Rate limit y recaptcha
+  - Revocación de tokens
 
 ---
 
-## 8. Consideraciones de implementación
+## 8. Consideraciones técnicas
 
-- Entorno local: Hibernate gestiona esquema (`ddl-auto=update`), Flyway deshabilitado.
-- Transición a Flyway: una vez estable el esquema, exportar DDL y mover a migraciones versionadas.
-- Validaciones de dominio: evitar solapamientos de turnos, respetar duraciones y espacios.
-- Diseño de endpoints: DTOs con `@Valid`, errores claros, paginación donde aplique.
-- Seguridad progresiva: arrancar abierto (solo `/health` público), luego proteger backoffice y casos de uso críticos.
+- Flyway para migraciones controladas
+- Validaciones: no solapamiento de turnos, horarios válidos
+- Paginación y DTOs limpios (@Valid)
+- Configuración de reglas editable desde el panel
+- Notificaciones asíncronas (event-driven)
 
 ---
 
-## 9. Métricas de éxito/MVP
+## 9. KPIs / Métricas de éxito (MVP)
 
-- Crear y aprobar un turno con reglas básicas.
-- CRUD de servicios/empleados/disponibilidades funcionando.
-- Reserva anónima (sin validación real, solo flag) disponible.
-- Login clásico operativo (Fase 1 de seguridad).
+- Alta completa de empresa con empleados y servicios.
+- Reserva anónima funcional con aprobación manual.
+- Validación telefónica básica operativa.
+- Login clásico funcionando.
 
 ---
 
 ## 10. Glosario
 
-- Reserva anónima: turno solicitado sin cuenta de usuario.
-- Validación telefónica: verificación por código (SMS/WhatsApp) para confirmar reserva.
-- Backoffice: panel interno de administración de empresa.
+- Turno pendiente: Reserva que requiere aprobación manual
+- Reserva anónima: Reserva sin cuenta de usuario
+- Validación telefónica: Confirmación por código enviado
+- Regla de negocio: Configuración dinámica que define comportamiento del sistema
+- Bloqueo horario: Período en que no se pueden tomar turnos
 
 ---
 
