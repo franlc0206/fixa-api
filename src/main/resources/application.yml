@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: fixa-api
+  datasource:
+    url: jdbc:mysql://localhost:3306/turnero?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: "root"
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    open-in-view: false
+  flyway:
+    enabled: false
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework: INFO
