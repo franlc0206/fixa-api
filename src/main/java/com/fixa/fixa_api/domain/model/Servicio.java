@@ -13,4 +13,5 @@ public class Servicio {
     private java.math.BigDecimal costo;
     private boolean requiereSena;
     private boolean activo;
+    private Long categoriaId; // opcional
 }

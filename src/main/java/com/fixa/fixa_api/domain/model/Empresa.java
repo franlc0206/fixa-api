@@ -11,7 +11,7 @@ public class Empresa {
     private String direccion;
     private String telefono;
     private String email;
-    private String categoria;
+    private Long categoriaId;
     private boolean permiteReservasSinUsuario;
     private boolean requiereValidacionTelefono;
     private boolean requiereAprobacionTurno;
