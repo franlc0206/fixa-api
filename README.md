@@ -1,65 +1,52 @@
-# Turnero API – Scaffolding (Clean/Hexagonal)
+# Fixa API – Backend (Clean/Hexagonal)
 
-Este proyecto usa una estructura por capas: domain, application e infrastructure. Los adapters (in/out) viven dentro de `infrastructure`.
+API para gestión de turnos (empresas, empleados, servicios, disponibilidades y turnos) basada en arquitectura hexagonal.
 
-## Capas
+## Arquitectura
 
 - domain/
-  - domain/model/: modelos de dominio puros (sin anotaciones de frameworks)
-  - domain/repository/: puertos (interfaces) que define el dominio para persistencia u otras IO
+  - `domain/model/`: modelos de dominio puros
+  - `domain/repository/`: puertos del dominio (interfaces)
 - application/
-  - application/usecase/: casos de uso (orquestación de reglas) que dependen de puertos del dominio
+  - `application/usecase/`: contratos de casos de uso
+  - `application/service/`: orquestación/servicios de aplicación (usan puertos del dominio)
 - infrastructure/
-  - infrastructure/in/web/: adapters de entrada (REST Controllers)
-  - infrastructure/in/messaging/: adapters de entrada (mensajería, webhooks)
-  - infrastructure/in/scheduler/: jobs programados
-  - infrastructure/out/persistence/: adapters de salida (JPA/Hibernate, entidades, repos)
-    - entity/: entidades JPA
-    - repository/: repositorios Spring Data JPA
-    - mapper/: mappers entre dominio y persistencia
-  - infrastructure/out/sms/ | out/email/: otros adapters externos
-  - infrastructure/config/: configuración técnica (Security, Swagger, Beans)
+  - `in/web/`: adapters de entrada (REST Controllers, DTOs)
+  - `out/persistence/`: adapters de salida (JPA entities/repos + mappers + adapters)
+  - `infrastructure/config/`: beans técnicos (security, etc.)
 
-## Rutas clave actuales
+## Funcionalidad clave (estado actual)
 
-- `src/main/java/com/fixa/fixa_api/domain/model/` → Usuario, Empresa, Empleado, Servicio, Turno
-- `src/main/java/com/fixa/fixa_api/domain/repository/` → UsuarioRepositoryPort, EmpresaRepositoryPort, TurnoRepositoryPort
-- `src/main/java/com/fixa/fixa_api/application/usecase/` → CrearTurnoUseCase, AprobarTurnoUseCase
-- `src/main/java/com/fixa/fixa_api/infrastructure/in/web/` → HealthController (endpoint `/health`)
-- `src/main/java/com/fixa/fixa_api/infrastructure/out/persistence/` → UsuarioEntity, UsuarioJpaRepository, UsuarioMapper
-- `src/main/java/com/fixa/fixa_api/infrastructure/config/` → SecurityConfig
+- Backoffice (hexagonal): Empresa, Empleado, Servicio, Disponibilidad
+  - CRUDs vía controllers → services → ports → adapters JPA
+  - Filtros: `activo`, `categoriaId`, `visibles` (empresas)
+  - Paginación básica: `page`, `size` (empresas, empleados, servicios)
+- Turnos (núcleo):
+  - Casos de uso: crear, aprobar, cancelar, completar
+  - Reglas: sin solape, calcula fin, estado inicial por empresa, `max_turnos_por_dia`, `max_turnos_por_semana`, `min_anticipacion_minutos`, `max_anticipacion_dias`
+  - Endpoints: `POST /api/turnos`, `/api/turnos/{id}/aprobar`, `/api/turnos/{id}/cancelar`, `/api/turnos/{id}/completar`
+  - Errores: `ApiException` + `GlobalExceptionHandler`
 
-## Seguridad (MVP Fase 1)
+## Ejecutar
 
-- Spring Security configurado en `SecurityConfig`.
-- Por ahora: `"/health"` es público y el resto `permitAll()` para no bloquear el MVP.
-- `PasswordEncoder`: `BCryptPasswordEncoder` (ya definido como Bean).
+- Requisitos: JDK 21, MySQL/MariaDB local
+- Config por defecto en `src/main/resources/application.yml` (ajustar credenciales)
+- Compilar: `mvnw.cmd -DskipTests package` (Windows) / `./mvnw -DskipTests package`
+- Run: `mvnw.cmd spring-boot:run` / `./mvnw spring-boot:run`
 
-## Base de datos
+## Endpoints de ejemplo
 
-- MySQL configurado en `src/main/resources/application.yml`:
-  - URL: `jdbc:mysql://localhost:3306/turnero?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`
-  - Usuario/Password: `root`/`root` (cambiar según tu entorno)
-  - Dialecto: `org.hibernate.dialect.MySQL8Dialect`
-- Migraciones con Flyway en `src/main/resources/db/migration/`:
-  - `V1__init.sql`: crea tabla `usuario` (parcial, según RFC). Agregar tablas restantes en `V2__...`.
+- Empresas: `GET /api/empresas?visibles=&activo=&categoriaId=&page=&size=`
+- Empleados: `GET /api/empresas/{empresaId}/empleados?activo=&page=&size=`
+- Servicios: `GET /api/empresas/{empresaId}/servicios?activo=&page=&size=`
+- Turnos: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
 
-## Flujo recomendado para nuevas features
+## Desarrollo
 
-1. Definir/ajustar modelos de dominio en `domain/model` y puertos en `domain/repository`.
-2. Implementar casos de uso en `application/usecase` (y servicios de aplicación si hace falta).
-3. Implementar adapters en `infrastructure`:
-   - Entrada: controllers REST en `infrastructure/in/web` (mapean DTOs ⇄ dominio).
-   - Salida: persistencia en `infrastructure/out/persistence` (JPA entities/repos + mappers).
-4. Agregar migraciones Flyway (V2, V3, ...) para cambios de esquema.
+- Guía completa: ver `docs/DEVELOPMENT.md` (reglas, buenas prácticas, scaffolding, commits, testing, ports/adapters, mappers, DTOs y errores).
+- Roadmap y estado: ver `docs/ROADMAP.md`.
 
-## Comandos útiles
+## Seguridad (MVP)
 
-- Compilar: `./mvnw -DskipTests package` (Linux/Mac) o `mvnw.cmd -DskipTests package` (Windows)
-- Levantar app: `./mvnw spring-boot:run` o `mvnw.cmd spring-boot:run`
+- `SecurityConfig` con configuración básica; endurecer en fases siguientes.
 
-## Pendientes inmediatos (según RFC)
-
-- Agregar entidades y repos para: Empresa, Empleado, Servicio, Turno, Disponibilidad, VerificacionTelefono.
-- Implementar casos de uso: CrearTurno, AprobarTurno, y endpoints correspondientes.
-- Endurecer seguridad: proteger endpoints, Auth (Fase 1), y luego OAuth2 (Fase 2).

@@ -11,6 +11,20 @@ Este documento guía la ejecución por fases del backend (Spring Boot) acorde al
 
 ---
 
+## Plan de Tests de Integración (iniciar de inmediato)
+
+- Turnos
+  - [ ] Crear turno válido (200 OK) y calcular fin correcto.
+  - [ ] Solapamiento para mismo empleado (409 CONFLICT).
+  - [ ] Límite `max_turnos_por_dia` (409 CONFLICT).
+  - [ ] Transiciones: aprobar, cancelar, completar (happy path e inválidas → 409).
+
+- Backoffice
+  - [ ] Empresa: crear/actualizar/activar y filtros (`visibles`, `activo`, `categoriaId`).
+  - [ ] Empleado: CRUD y filtro `activo`.
+  - [ ] Servicio: CRUD y filtro `activo`.
+  - [ ] Disponibilidad: crear/listar/eliminar con validaciones de horario.
+
 ## Fase 0 – Preparación del entorno
 
 Objetivo: Tener el proyecto inicial listo para desarrollo.
@@ -87,20 +101,28 @@ Tareas
 - `AprobarTurnoUseCase`:
   - Validar transición de estado.
   - Confirmar y persistir.
+- `CancelarTurnoUseCase`:
+  - Validar transición de estado.
+  - Cancelar y persistir.
+- `CompletarTurnoUseCase`:
+  - Validar transición de estado.
+  - Completar y persistir.
 - Endpoints REST (infrastructure → in/web):
   - POST `/api/turnos` (crear)
   - POST `/api/turnos/{id}/aprobar` (aprobar)
+  - POST `/api/turnos/{id}/cancelar` (cancelar)
+  - POST `/api/turnos/{id}/completar` (completar)
 - DTOs request/response y validaciones `@Valid`.
 
 Estado
-- [DONE] Implementación de `CrearTurnoUseCase` y `AprobarTurnoUseCase`.
-- [DONE] Endpoints: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar`.
+- [DONE] Implementación de `CrearTurnoUseCase`, `AprobarTurnoUseCase`, `CancelarTurnoUseCase`, `CompletarTurnoUseCase`.
+- [DONE] Endpoints: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar`, `POST /api/turnos/{id}/cancelar`, `POST /api/turnos/{id}/completar`.
 - [DONE] DTO `TurnoCreateRequest` con `@Valid`.
 - [DONE] Manejo de errores global `GlobalExceptionHandler` con `ApiException`.
 - [DONE] Migración a Hexagonal: `TurnoRepositoryPort` + `TurnoRepositoryAdapter` + `TurnoMapper`. `TurnoCommandService` usa puertos.
-- [PENDING] Endpoints y reglas de transición para `CANCELADO` y `COMPLETADO`.
-- [PENDING] Reglas adicionales vía `ConfigRegla` (máx turnos/día/semana, etc.).
-- [PENDING] Tests de integración (repos, endpoints, validaciones).
+- [DONE] Regla `max_turnos_por_dia` aplicada vía `ConfigRegla`.
+- [DONE] Reglas adicionales vía `ConfigRegla`: `max_turnos_por_semana`, `min_anticipacion_minutos`, `max_anticipacion_dias`.
+- [NEXT] Tests de integración (repos, endpoints, validaciones) — iniciar ahora, no al final.
 
 Criterios de aceptación
 - No se permiten solapamientos.
@@ -129,7 +151,16 @@ Estado
   - Controllers usan Services (application) y modelos de dominio.
   - Services usan Puertos de dominio.
   - Adapters JPA implementan puertos con mappers.
-- [PENDING] Tests de integración básicos para CRUDs y validaciones.
+- [DONE] DTOs con `@Valid` en endpoints creados.
+- [DONE] Filtros básicos en listados:
+  - Empresas: `visibles`, `activo`, `categoriaId`.
+  - Empleados: `activo`.
+  - Servicios: `activo`.
+- [DONE] Paginación básica en listados:
+  - Empresas: `page`, `size`.
+  - Empleados: `page`, `size`.
+  - Servicios: `page`, `size`.
+- [NEXT] Tests de integración para CRUDs y validaciones — iniciar ahora, no al final.
 
 Criterios de aceptación
 - CRUDs con validaciones y errores amigables.

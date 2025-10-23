@@ -20,8 +20,14 @@ public class EmpresaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Empresa>> listar(@RequestParam(value = "visibles", required = false) Boolean visibles) {
-        List<Empresa> result = empresaService.listar(visibles);
+    public ResponseEntity<List<Empresa>> listar(
+            @RequestParam(value = "visibles", required = false) Boolean visibles,
+            @RequestParam(value = "activo", required = false) Boolean activo,
+            @RequestParam(value = "categoriaId", required = false) Long categoriaId,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        List<Empresa> result = empresaService.listarConFiltrosPaginado(visibles, activo, categoriaId, page, size);
         return ResponseEntity.ok(result);
     }
 

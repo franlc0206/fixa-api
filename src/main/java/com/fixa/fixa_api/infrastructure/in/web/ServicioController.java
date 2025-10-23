@@ -19,8 +19,17 @@ public class ServicioController {
     }
 
     @GetMapping("/api/empresas/{empresaId}/servicios")
-    public ResponseEntity<List<Servicio>> listar(@PathVariable Long empresaId) {
-        return ResponseEntity.ok(servicioService.listarPorEmpresa(empresaId));
+    public ResponseEntity<List<Servicio>> listar(@PathVariable Long empresaId,
+                                                 @RequestParam(value = "activo", required = false) Boolean activo,
+                                                 @RequestParam(value = "page", required = false) Integer page,
+                                                 @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null) {
+            return ResponseEntity.ok(servicioService.listarPorEmpresaPaginado(empresaId, activo, page, size));
+        }
+        if (activo == null) {
+            return ResponseEntity.ok(servicioService.listarPorEmpresa(empresaId));
+        }
+        return ResponseEntity.ok(servicioService.listarPorEmpresa(empresaId, activo));
     }
 
     @PostMapping("/api/empresas/{empresaId}/servicios")

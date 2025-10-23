@@ -19,8 +19,17 @@ public class EmpleadoController {
     }
 
     @GetMapping("/api/empresas/{empresaId}/empleados")
-    public ResponseEntity<List<Empleado>> listar(@PathVariable Long empresaId) {
-        return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId));
+    public ResponseEntity<List<Empleado>> listar(@PathVariable Long empresaId,
+                                                 @RequestParam(value = "activo", required = false) Boolean activo,
+                                                 @RequestParam(value = "page", required = false) Integer page,
+                                                 @RequestParam(value = "size", required = false) Integer size) {
+        if (page != null && size != null) {
+            return ResponseEntity.ok(empleadoService.listarPorEmpresaPaginado(empresaId, activo, page, size));
+        }
+        if (activo == null) {
+            return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId));
+        }
+        return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId, activo));
     }
 
     @PostMapping("/api/empresas/{empresaId}/empleados")

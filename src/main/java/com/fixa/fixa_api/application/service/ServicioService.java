@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ServicioService {
@@ -18,6 +19,20 @@ public class ServicioService {
 
     public List<Servicio> listarPorEmpresa(Long empresaId) {
         return servicioPort.findByEmpresaId(empresaId);
+    }
+
+    public List<Servicio> listarPorEmpresa(Long empresaId, Boolean activo) {
+        List<Servicio> base = servicioPort.findByEmpresaId(empresaId);
+        if (activo == null) return base;
+        return base.stream().filter(s -> s.isActivo() == activo).collect(Collectors.toList());
+    }
+
+    public List<Servicio> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Integer page, Integer size) {
+        List<Servicio> filtrado = listarPorEmpresa(empresaId, activo);
+        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        int from = Math.min(page * size, filtrado.size());
+        int to = Math.min(from + size, filtrado.size());
+        return filtrado.subList(from, to);
     }
 
     public Optional<Servicio> obtener(Long id) {
