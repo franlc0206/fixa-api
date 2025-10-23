@@ -186,6 +186,12 @@ Criterios de aceptación
 
 ---
 
+Estado
+- [DONE] Endpoints públicos separados:
+  - `PublicEmpresaController`: `GET /api/public/empresas`, `GET /api/public/empresas/{empresaId}/servicios` (solo activos por defecto, con paginación).
+  - `PublicTurnoController`: `POST /api/public/turnos` (reserva anónima usando reglas y estado inicial según empresa; `requiereValidacion` aplicado).
+- [NEXT] Tests de integración: catálogo (solo visibles, paginación) y reserva anónima (validaciones y flags).
+
 ## Fase 5 – Seguridad Fase 1 (login clásico)
 
 Objetivo: proteger backoffice y asignar roles básicos.
@@ -201,6 +207,17 @@ Criterios de aceptación
 - Acceso según rol a endpoints.
 
 ---
+
+Estado
+- [DONE] Auth básico:
+  - `AuthService.register/login` con `BCryptPasswordEncoder`.
+  - `AuthController` con `POST /api/auth/register` y `POST /api/auth/login`.
+- [DONE] Seguridad HTTP básica:
+  - `UsuarioUserDetailsService` para cargar usuarios por email.
+  - `SecurityConfig` con reglas por rol para backoffice y turnos internos.
+  - Endpoints públicos permitidos (`/api/public/**`, `/api/auth/**`, `/health`).
+- [DONE] Seed local `SUPERADMIN` (CommandLineRunner) para pruebas.
+- [NEXT] Tests de integración de auth y autorizaciones por rol.
 
 ## Fase 6 – Scheduler y Mensajería (Infrastructure → scheduler / messaging)
 
