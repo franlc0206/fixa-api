@@ -8,12 +8,12 @@ Guía de roadmap, arquitectura y buenas prácticas para implementar el Frontend 
 - Backoffice: administración de empresa, empleados, servicios, disponibilidades y turnos.
 - Codebase moderna, predecible, con tests, y CI-ready.
 
-## Stack técnico
+## Stack técnico (propuesto)
 
 - Build: Vite + React 18 + TypeScript
 - Router: React Router v6.22+
 - Datos: React Query (TanStack Query) para fetching/caching; Zustand o Redux Toolkit para UI/shared state simple.
-- UI: Tailwind CSS o Chakra UI (elegir 1). Icons: Lucide o Heroicons.
+- UI: Tailwind CSS o Chakra UI (a definir). Icons: Lucide o Heroicons.
 - Formularios/validación: React Hook Form + Zod/Yup
 - HTTP: Axios (con interceptors) o fetch + ky
 - Env: Vite env vars (`import.meta.env`)
@@ -24,85 +24,88 @@ Guía de roadmap, arquitectura y buenas prácticas para implementar el Frontend 
 ## Estructura del proyecto (scaffolding)
 
 ```
-frontend/
-  src/
-    app/
-      router/
-        index.tsx             # rutas públicas y privadas
-      layout/
-        PublicLayout.tsx
-        BackofficeLayout.tsx
-      providers/
-        QueryProvider.tsx
-        ThemeProvider.tsx
-        AuthProvider.tsx      # contexto de usuario autenticado
-    features/
-      auth/
-        api.ts                # llamadas /api/auth
-        hooks.ts              # useLogin, useRegister
-        components/
-          LoginForm.tsx
-          RegisterForm.tsx
-      public/
-        empresas/
-          api.ts              # GET /api/public/empresas
-          pages/
-            EmpresasPublicList.tsx
-        servicios/
-          api.ts              # GET /api/public/empresas/:id/servicios
-          pages/
-            ServiciosPublicList.tsx
-        turnos/
-          api.ts              # POST /api/public/turnos
-          pages/
-            ReservaAnonimaPage.tsx
-      backoffice/
-        empresas/
-          api.ts              # /api/empresas CRUD
-          pages/
-            EmpresaListPage.tsx
-            EmpresaEditPage.tsx
-        empleados/
-          api.ts              # /api/empresas/:id/empleados CRUD
-          pages/
-            EmpleadoListPage.tsx
-            EmpleadoEditPage.tsx
-        servicios/
-          api.ts              # /api/empresas/:id/servicios CRUD
-          pages/
-            ServicioListPage.tsx
-            ServicioEditPage.tsx
-        disponibilidad/
-          api.ts              # /api/empleados/:id/disponibilidad
-          pages/
-            DisponibilidadListPage.tsx
-        turnos/
-          api.ts              # /api/turnos crear/aprobar/cancelar/completar
-          pages/
-            TurnoListPage.tsx
-    shared/
-      api/
-        http.ts               # axios instance con interceptors (auth, errores)
+src/
+  app/
+    router/
+      index.tsx             # rutas públicas y privadas
+    layout/
+      PublicLayout.tsx
+      BackofficeLayout.tsx
+    providers/
+      QueryProvider.tsx
+      ThemeProvider.tsx
+      AuthProvider.tsx      # contexto de usuario autenticado
+      TenantProvider.tsx    # contexto multi-tenant: empresa activa + empresas del usuario
+  features/
+    auth/
+      api.ts                # llamadas /api/auth
+      hooks.ts              # useLogin, useRegister
       components/
-        Table.tsx
-        Pagination.tsx
-        FormControls.tsx
-        Loader.tsx
-        ErrorBoundary.tsx
-      hooks/
-        usePagination.ts
-        useToast.ts
-      utils/
-        formatters.ts
-        constants.ts
-      types/
-        index.d.ts
-    index.css
-    main.tsx
-  public/
-  vite.config.ts
-  tsconfig.json
-  package.json
+        LoginForm.tsx
+        RegisterForm.tsx
+    public/
+      empresas/
+        api.ts              # GET /api/public/empresas
+        pages/
+          EmpresasPublicList.tsx
+      servicios/
+        api.ts              # GET /api/public/empresas/:id/servicios
+        pages/
+          ServiciosPublicList.tsx
+      turnos/
+        api.ts              # POST /api/public/turnos
+        pages/
+          ReservaAnonimaPage.tsx
+    backoffice/
+      empresas/
+        api.ts              # /api/empresas CRUD
+        pages/
+          EmpresaListPage.tsx
+          EmpresaEditPage.tsx
+      empleados/
+        api.ts              # /api/empresas/:id/empleados CRUD
+        pages/
+          EmpleadoListPage.tsx
+          EmpleadoEditPage.tsx
+      servicios/
+        api.ts              # /api/empresas/:id/servicios CRUD
+        pages/
+          ServicioListPage.tsx
+          ServicioEditPage.tsx
+      disponibilidad/
+        api.ts              # /api/empleados/:id/disponibilidad
+        pages/
+          DisponibilidadListPage.tsx
+      turnos/
+        api.ts              # /api/turnos listar/obtener/crear/aprobar/cancelar/completar
+        pages/
+          TurnoListPage.tsx
+          TurnoDetailPage.tsx (opcional)
+  shared/
+    api/
+      http.ts               # axios instance con interceptors (auth, errores)
+    me/
+      api.ts                # GET /api/me/empresas (empresas del usuario)
+    components/
+      Table.tsx
+      Pagination.tsx
+      FormControls.tsx
+      Loader.tsx
+      ErrorBoundary.tsx
+    hooks/
+      usePagination.ts
+      useToast.ts
+    utils/
+      formatters.ts
+      constants.ts
+    types/
+      index.d.ts
+index.css
+main.tsx
+public/
+vite.config.ts
+tsconfig.json
+package.json
 ```
 
 ## Convenciones
@@ -117,246 +120,208 @@ frontend/
 ## Seguridad/Autenticación (Fase 1)
 
 - Login básico (HTTP Basic para MVP):
-  - Guardar credenciales en memoria (Context) + setear `Authorization` en Axios.
-  - Proteger rutas backoffice con `PrivateRoute` (verificar `AuthContext.isAuthenticated`).
+    - Guardar credenciales en memoria (Context) + setear `Authorization` en Axios.
+    - Proteger rutas backoffice con `PrivateRoute` (verificar `AuthContext.isAuthenticated`).
 - Roles UI:
-  - Renderizado condicional por `rol` para acciones/botones (ej.: `EMPLEADO` no puede editar empresa).
+    - Renderizado condicional por `rol` para acciones/botones (ej.: `EMPLEADO` no puede editar empresa).
 - Futuro: JWT + Refresh tokens (Fase 2 de seguridad front).
 
 ## Integración con API actual
 
-- Catálogo público:
-  - `GET /api/public/empresas?categoriaId=&page=&size=`
-  - `GET /api/public/empresas/{empresaId}/servicios?soloActivos=&page=&size=`
-- Reserva anónima:
-  - `POST /api/public/turnos` con payload `TurnoCreateRequest`.
-- Backoffice (requiere auth básica):
-  - Empresas: `GET/POST/PUT/PATCH /api/empresas`
-  - Empleados: `GET/POST/PUT/DELETE /api/empresas/{id}/empleados`
-  - Servicios: `GET/POST/PUT/DELETE /api/empresas/{id}/servicios`
-  - Disponibilidad: `GET/POST/DELETE /api/empleados/{id}/disponibilidad`
-  - Turnos internos: `POST /api/turnos`, `/api/turnos/{id}/aprobar|cancelar|completar`
-
----
-
-## Contratos de API para el Front
-
-Notas generales:
 - Base URL: `http://localhost:8080`
-- Headers comunes: `Content-Type: application/json` y, en backoffice, `Authorization: Basic <base64(email:password)>`.
+- Headers: `Content-Type: application/json` y, en backoffice, `Authorization: Basic <base64(email:password)>`.
 - Paginación: `page` (0-based) y `size`.
 
 ### Público (sin auth)
 
-- GET `/api/public/empresas?categoriaId=&page=&size=`
-  - Respuesta 200: `Empresa[]`
-  ```json
-  [
-    {
-      "id": 1,
-      "nombre": "Peluquería X",
-      "descripcion": "",
-      "telefono": "",
-      "email": "",
-      "categoriaId": 2,
-      "visibilidadPublica": true,
-      "activo": true
-    }
-  ]
-  ```
-
-- GET `/api/public/empresas/{empresaId}/servicios?soloActivos=true&page=&size=`
-  - Respuesta 200: `Servicio[]`
-  ```json
-  [
-    {
-      "id": 10,
-      "empresaId": 1,
-      "nombre": "Corte",
-      "descripcion": "",
-      "duracionMinutos": 30,
-      "requiereEspacioLibre": false,
-      "activo": true,
-      "categoriaId": 2
-    }
-  ]
-  ```
-
-- POST `/api/public/turnos`
-  - Body (TurnoCreateRequest):
-  ```json
-  {
-    "servicioId": 10,
-    "empleadoId": 5,
-    "empresaId": 1,
-    "clienteId": null,
-    "clienteNombre": "Juan",
-    "clienteApellido": "Pérez",
-    "clienteTelefono": "+54 11 2222-3333",
-    "clienteDni": "12345678",
-    "clienteEmail": "juan@example.com",
-    "fechaHoraInicio": "2025-10-25T10:00:00",
-    "observaciones": "Sin perfume"
-  }
-  ```
-  - Respuesta 200 (Turno):
-  ```json
-  {
-    "id": 99,
-    "servicioId": 10,
-    "empleadoId": 5,
-    "empresaId": 1,
-    "clienteId": null,
-    "clienteNombre": "Juan",
-    "clienteApellido": "Pérez",
-    "clienteTelefono": "+54 11 2222-3333",
-    "clienteDni": "12345678",
-    "clienteEmail": "juan@example.com",
-    "telefonoValidado": false,
-    "fechaHoraInicio": "2025-10-25T10:00:00",
-    "fechaHoraFin": "2025-10-25T10:30:00",
-    "estado": "PENDIENTE",
-    "requiereValidacion": true,
-    "observaciones": "Sin perfume"
-  }
-  ```
+- `GET /api/public/empresas?categoriaId=&page=&size=` → `Empresa[]`
+- `GET /api/public/empresas/{empresaId}/servicios?soloActivos=&page=&size=` → `Servicio[]`
+- `POST /api/public/turnos` → crea `Turno`
 
 ### Auth (MVP)
 
-- POST `/api/auth/register`
-  - Body:
-  ```json
-  {
-    "nombre": "Admin",
-    "apellido": "User",
-    "email": "admin@fixa.local",
-    "telefono": "000000",
-    "password": "admin123",
-    "rol": "SUPERADMIN"
-  }
-  ```
-  - Respuesta 200: `Usuario`
-
-- POST `/api/auth/login`
-  - Body:
-  ```json
-  { "email": "admin@fixa.local", "password": "admin123" }
-  ```
-  - Respuesta 200:
-  ```json
-  { "id": 1, "email": "admin@fixa.local", "rol": "SUPERADMIN" }
-  ```
-  - Front: setear `Authorization: Basic base64(email:password)` en Axios para llamadas de backoffice.
+- `POST /api/auth/register` → `Usuario`
+- `POST /api/auth/login` → `{ id, email, rol }` → usar Basic Auth para backoffice
 
 ### Backoffice (requiere auth básica)
 
-- GET `/api/empresas?visibles=&activo=&categoriaId=&page=&size=` → `Empresa[]`
+- Empresas: `GET/POST/PUT/PATCH /api/empresas`
+- Empleados: `GET/POST/PUT/DELETE /api/empresas/{id}/empleados`
+- Servicios: `GET/POST/PUT/DELETE /api/empresas/{id}/servicios`
+- Disponibilidad: `GET/POST/DELETE /api/empleados/{id}/disponibilidad`
+- Turnos internos: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
 
-- POST `/api/empresas`
-  - Body (ejemplo mínimo):
-  ```json
-  {
-    "nombre": "Mi Empresa",
-    "descripcion": "",
-    "telefono": "",
-    "email": "contacto@miempresa.com",
-    "categoriaId": 2,
-    "permiteReservasSinUsuario": true,
-    "requiereValidacionTelefono": false,
-    "requiereAprobacionTurno": true,
-    "mensajeValidacionPersonalizado": null,
-    "visibilidadPublica": true,
-    "activo": true
-  }
-  ```
+## Estado actual
 
-- GET `/api/empresas/{empresaId}/servicios?activo=&page=&size=` → `Servicio[]`
+- **Fase A – Setup y base común**
+    - Crear proyecto Vite + React + TS: [DONE]
+    - ESLint + Prettier + Husky + lint-staged: [DONE]
+    - Tailwind/tema base: [DONE]
+    - Axios + interceptors; React Query Provider; Router + layouts: [DONE]
+    - Componentes base (Table, Pagination, Loader, ErrorBoundary): [DONE]
+- **Fase B – Público (Catálogo + Reserva)**
+    - Páginas y APIs de catálogo/reserva con validaciones: [DONE]
+- **Fase C – Auth (MVP)**
+    - Auth context básico: [DONE]
+    - Login/Registro + PrivateRoute + persistencia: [DONE]
+- **Fase D – Backoffice CRUDs**
+    - Empresas: [DONE]
+    - Empleados: [DONE]
+    - Servicios: [DONE]
+    - Disponibilidad: [DONE]
+    - Turnos: [DONE]
+- **Fase E – UX/Calidad**
+    - Estados vacíos, skeletons, toasts globales.
+    - Accesibilidad.
+    - i18n (si aplica) y tema.
+    - Performance: Lighthouse y code splitting por rutas.
+    - Testing por feature (MSW, Vitest, React Testing Library).
 
-- POST `/api/empresas/{empresaId}/servicios`
-  - Body:
-  ```json
-  {
-    "nombre": "Corte",
-    "descripcion": "",
-    "duracionMinutos": 30,
-    "requiereEspacioLibre": false,
-    "costo": 1000,
-    "requiereSena": false,
-    "activo": true,
-    "categoriaId": 2
-  }
-  ```
+## Alineación con RFC – Frontend Turnero Web (v1.0)
 
-- GET `/api/empresas/{empresaId}/empleados?activo=&page=&size=` → `Empleado[]`
+- **Roles del RFC** (Cliente, Empresa/Admin, Empleado, SuperAdmin)
+    - Cliente ↔ Módulo público (ya implementado: catálogo, servicios, reserva)
+    - Empresa/Empleado ↔ Backoffice empresa (parcial: empresas, empleados, servicios, disponibilidad; pendiente: turnos con calendario, configuración)
+    - SuperAdmin ↔ Backoffice global (pendiente)
 
-- POST `/api/empresas/{empresaId}/empleados`
-  - Body:
-  ```json
-  {
-    "nombre": "Ana",
-    "apellido": "García",
-    "rol": "ESTILISTA",
-    "activo": true
-  }
-  ```
+- **Casos de uso mapeados**
+    - UC-01 Explorar empresas/servicios → `/`, `/empresas`, `/empresas/:id/servicios` [DONE]
+    - UC-02 Reserva anónima → `/reserva` [DONE]; calendario público [PENDIENTE]
+    - UC-03 Validación de teléfono → `/validar` [PENDIENTE] (requiere API de verificación)
+    - UC-04 Mis turnos (cliente) → `/mis-turnos` [PENDIENTE]
+    - UC-05 Registro/Login (OAuth2) → MVP con Basic [DONE]; OAuth2/JWT [PENDIENTE]
+    - UC-06 Alta de empresa → `/superadmin/empresas/new` [DONE]; registro dedicado `/empresa/registro` [PENDIENTE]
+    - UC-07 Empleados + Horarios → `/backoffice/empleados/:empresaId`, `/backoffice/disponibilidad/:empleadoId` [DONE]
+    - UC-08 Servicios → `/backoffice/servicios/:empresaId` [DONE]
+    - UC-09 Configuración reglas → `/backoffice/empresa|configuracion` [PENDIENTE]
+    - UC-10 Gestión de turnos (calendario/acciones) → `/backoffice/turnos` [DONE]
+    - UC-11 Dashboard empresa → `/backoffice/dashboard` [PENDIENTE]
+    - UC-12 SuperAdmin (global) → `/superadmin/*` [PARCIAL] (Empresas DONE; categorías/usuarios/auditoría PENDIENTE)
 
-- GET `/api/empleados/{empleadoId}/disponibilidad` → `Disponibilidad[]`
-- POST `/api/empleados/{empleadoId}/disponibilidad`
-  - Body:
-  ```json
-  { "diaSemana": "LUNES", "horaInicio": "09:00", "horaFin": "18:00" }
-  ```
+- **Gaps/pendientes según RFC**
+    - Autenticación: OAuth 2.0 + JWT/refresh (reemplazar MVP Basic Auth) [PENDIENTE]
+    - Validación telefónica: UI `/validar` + integración proveedor (SMS/WhatsApp) [PENDIENTE]
+    - Módulo cliente: EmpresaDetalle/ServicioDetalle con calendario público de turnos [PENDIENTE]
+    - Módulo cliente: Mis turnos (ver/cancelar/reprogramar) [PENDIENTE]
+    - Backoffice: Turnos (listado/calendario y acciones aprobar/cancelar/completar) [PENDIENTE]
 
-- Turnos internos
-  - POST `/api/turnos` (igual a público pero autenticado)
-  - POST `/api/turnos/{id}/aprobar`
-  - POST `/api/turnos/{id}/cancelar`
-    - Body opcional: `{ "motivo": "Cliente no puede asistir" }`
-  - POST `/api/turnos/{id}/completar`
+- Público
+    - `/` → Home
+    - `/empresas` → Listado de empresas (filtros por `categoriaId`, paginación `page`,`size`)
+    - `/empresas/:empresaId/servicios` → Servicios de la empresa (filtro `soloActivos`, paginación)
+    - `/reserva` → Reserva anónima
+    - `/login` y `/register`
+    - `/validar` → Validación de teléfono (envío y confirmación de código)
+    - `/mis-turnos` → Turnos del cliente (listar/cancelar/reprogramar)
+- Backoffice (privadas)
+    - `/backoffice/dashboard`
+    - `/backoffice/turnos` → Listado/acciones
+    - `/backoffice/turnos/new` → Crear turno
+    - `/backoffice/turnos/calendario` → Calendario semanal
+    - `/backoffice/servicios/:empresaId` → Listado por empresa
+    - `/backoffice/servicios/:empresaId/new` y `/backoffice/servicios/:empresaId/:id`
+    - `/backoffice/empleados/:empresaId` → Listado por empresa
+    - `/backoffice/empleados/:empresaId/new` y `/backoffice/empleados/:empresaId/:id`
+    - `/backoffice/disponibilidad/:empleadoId` → Gestión de disponibilidad
+    - `/backoffice/empresas` → Gestión básica (listado/edición)
+    - `/backoffice/empresas/new` y `/backoffice/empresas/:id` (uso interno empresa). Alta global se hace en SuperAdmin.
+    - `/backoffice/configuracion` → Configuración de empresa
+- SuperAdmin (privadas)
+    - `/superadmin/empresas` → CRUD global de empresas (alta incluida)
+    - `/superadmin/empresas/new` y `/superadmin/empresas/:id`
+    - (próximo) `/superadmin/categorias`, `/superadmin/usuarios`, `/superadmin/auditoria`
+    - Archivos: `features/public/empresas/api.ts`, `pages/EmpresasPublicList.tsx`, `hooks/useEmpresas.ts`
+    - Éxito: render tabla/lista + paginación; Error: toast estándar; Vacío: estado vacío
+- Público/Servicios por empresa
+    - Endpoint: `GET /api/public/empresas/{empresaId}/servicios?soloActivos=&page=&size=`
+    - Key: `['servicios-publicos', empresaId, { soloActivos, page, size }]`
+- Reserva anónima
+    - Endpoint: `POST /api/public/turnos`
+    - Archivos: `features/public/turnos/api.ts`, `pages/ReservaAnonimaPage.tsx`, `components/ReservaForm.tsx`
+    - Form: RHF + Zod con `TurnoCreateRequest` y feedback de éxito/error
+- Auth (MVP)
+    - Login: `POST /api/auth/login` → setear Basic Auth con `setBasicAuth`
+    - Register: `POST /api/auth/register` (opcional)
+    - Archivos: `features/auth/api.ts`, `hooks.ts (useLogin/useRegister)`, `components/LoginForm.tsx`
+    - Guard: `PrivateRoute` usando `AuthProvider`
+- Backoffice/Empresas
+    - Endpoints: `GET/POST/PUT/PATCH /api/empresas`
+    - Keys: `['empresas-admin', params]`, `['empresa', id]`
+    - Archivos: `features/backoffice/empresas/api.ts`, `pages/EmpresaListPage.tsx`, `pages/EmpresaEditPage.tsx`
+- Backoffice/Servicios
+    - Endpoints: `GET/POST/PUT/DELETE /api/empresas/{empresaId}/servicios`
+    - Keys: `['servicios', empresaId, params]`, `['servicio', id]`
+    - Archivos: `features/backoffice/servicios/api.ts`, `pages/ServicioListPage.tsx`, `pages/ServicioEditPage.tsx`
+- Backoffice/Empleados
+    - Endpoints: `GET/POST/PUT/DELETE /api/empresas/{empresaId}/empleados`
+    - Keys: `['empleados', empresaId, params]`, `['empleado', id]`
+    - Archivos: `features/backoffice/empleados/api.ts`, `pages/EmpleadoListPage.tsx`, `pages/EmpleadoEditPage.tsx`
+- Backoffice/Disponibilidad
+    - Endpoints: `GET/POST/DELETE /api/empleados/{empleadoId}/disponibilidad`
+    - Keys: `['disponibilidad', empleadoId]`
+    - Archivos: `features/backoffice/disponibilidad/api.ts`, `pages/DisponibilidadListPage.tsx`
+- Backoffice/Turnos
+    - Endpoints: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
+    - Keys: `['turnos', params]`, `['turno', id]`
+    - Archivos: `features/backoffice/turnos/api.ts`, `pages/TurnoListPage.tsx`
 
-## Roadmap por fases (Frontend)
+## Testing por feature
+
+- MSW handlers por recurso (empresas, servicios, empleados, disponibilidad, turnos)
+- Unit: hooks (Query + RHF + utils)
+- Integration: páginas con navegación, estados (loading/error/vacío), y flujos felices/errores
+- Cobertura básica con `@vitest/coverage-v8`
+
+## Checklist Fase A (pendientes)
+
+- Instalar dependencias (`npm install`) y levantar `npm run dev`
+- Configurar Husky + lint-staged (`prepare`, hooks `pre-commit`)
+- Agregar `.env.example`
+- Confirmar naming y paths finales de `features/*` al iniciar Fase B
+
+## Roadmap por fases
 
 ### Fase A – Setup y base común
 - Crear proyecto Vite + React + TS.
 - ESLint + Prettier + Husky + lint-staged.
-- Tailwind/Chakra + tema base (dark/light opcional).
+- Tailwind/Chakra + tema base.
 - Axios + interceptors; React Query Provider; Router + layouts.
 - Componentes base: Table, Pagination, Loader, ErrorBoundary.
 
 ### Fase B – Público (Catálogo + Reserva)
-- Página listado de empresas visibles con filtros por categoría y paginación.
-- Página servicios de empresa (solo activos) con paginación.
-- Página de reserva anónima (formulario con validaciones + feedback de éxito/error).
-- Tests: render de páginas, flujos felices y errores con MSW.
+- Listado de empresas visibles con filtros por categoría y paginación.
+- Servicios de empresa (solo activos) con paginación.
+- Reserva anónima (formulario + validaciones + feedback).
+- Tests con MSW.
 
 ### Fase C – Auth (MVP)
-- Página Login y (opcional) registro básico.
-- Guard de rutas privadas (BackofficeLayout) usando contexto de auth.
-- Persistencia temporal de sesión (memory o sessionStorage).
+- Login y (opcional) registro básico.
+- Guard de rutas privadas usando contexto de auth.
+- Persistencia temporal de sesión (memory/sessionStorage).
 
 ### Fase D – Backoffice CRUDs
 - Empresas: listado con filtros/paginación, crear/editar, activar.
 - Empleados: listado y CRUD; filtro activo.
 - Servicios: listado y CRUD; filtro activo.
 - Disponibilidad: listado y altas/bajas simples.
-- Turnos: listado y acciones (aprobar/cancelar/completar); validaciones.
-- Tests de integración de cada flujo con MSW.
+- Turnos: listado y acciones (aprobar/cancelar/completar).
+- Tests de integración con MSW.
 
 ### Fase E – UX/Calidad
 - Estados vacíos, skeletons, toasts globales.
-- Accesibilidad (aria-labels, focus management).
-- i18n (si aplica), tema.
-- Métricas de performance (Lighthouse), code splitting por rutas.
+- Accesibilidad.
+- i18n (si aplica) y tema.
+- Performance: Lighthouse y code splitting por rutas.
 
 ## Buenas prácticas
 
-- Mantener controllers del backend como fuente de verdad de contratos; generar tipos TS desde OpenAPI (si se incorpora Swagger) o definir tipos compartidos en `shared/types`.
+- Mantener controllers del backend como fuente de verdad de contratos; definir tipos en `shared/types` o generar desde OpenAPI.
 - Evitar estado global indiscriminado; preferir Query string + React Query + estado local.
 - Normalizar errores en Axios (interceptor) y mostrar toasts legibles.
 - Formularios: controlar touched/dirty, feedback en tiempo real con Zod.
 - Reutilizar componentes de tabla/paginación/filtros.
 
-## Scripts (package.json)
+## Scripts (package.json sugerido)
 
 ```json
 {
@@ -370,12 +335,6 @@ Notas generales:
 }
 ```
 
-## Testing
-
-- Configurar Vitest + RTL; MSW para simular endpoints.
-- Unit: hooks y componentes puros.
-- Integration: páginas con navegación, API mocks y aserciones de vista.
-
 ## CI/CD (resumen)
 
 - Ejecutar `lint` y `test` en cada PR.
@@ -384,7 +343,7 @@ Notas generales:
 ## Entregables por fase
 
 - Fase A: repo inicial con scaffolding, lint/format, providers e infra de datos.
-- Fase B: catálogo y reserva anónima 100% funcionales (desktop-first; responsive básico).
+- Fase B: catálogo y reserva anónima funcionales.
 - Fase C: login básico y protección de backoffice.
-- Fase D: CRUDs completos en backoffice con paginación/filtros e interacción con reglas.
+- Fase D: CRUDs completos en backoffice con paginación/filtros.
 - Fase E: pulido UX, accesibilidad y performance.
