@@ -6,6 +6,7 @@ import com.fixa.fixa_api.application.usecase.CancelarTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CompletarTurnoUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.infrastructure.in.web.dto.TurnoCreateRequest;
+import com.fixa.fixa_api.application.service.TurnoQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,13 +19,37 @@ public class TurnoController {
     private final AprobarTurnoUseCase aprobarTurnoUseCase;
     private final CancelarTurnoUseCase cancelarTurnoUseCase;
     private final CompletarTurnoUseCase completarTurnoUseCase;
+    private final TurnoQueryService turnoQueryService;
 
     public TurnoController(CrearTurnoUseCase crearTurnoUseCase, AprobarTurnoUseCase aprobarTurnoUseCase,
-                           CancelarTurnoUseCase cancelarTurnoUseCase, CompletarTurnoUseCase completarTurnoUseCase) {
+                           CancelarTurnoUseCase cancelarTurnoUseCase, CompletarTurnoUseCase completarTurnoUseCase,
+                           TurnoQueryService turnoQueryService) {
         this.crearTurnoUseCase = crearTurnoUseCase;
         this.aprobarTurnoUseCase = aprobarTurnoUseCase;
         this.cancelarTurnoUseCase = cancelarTurnoUseCase;
         this.completarTurnoUseCase = completarTurnoUseCase;
+        this.turnoQueryService = turnoQueryService;
+    }
+
+    @GetMapping
+    public ResponseEntity<java.util.List<Turno>> listar(
+            @RequestParam(value = "empresaId", required = false) Long empresaId,
+            @RequestParam(value = "empleadoId", required = false) Long empleadoId,
+            @RequestParam(value = "estado", required = false) String estado,
+            @RequestParam(value = "desde", required = false) java.time.LocalDateTime desde,
+            @RequestParam(value = "hasta", required = false) java.time.LocalDateTime hasta,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        var result = turnoQueryService.listar(empresaId, empleadoId, estado, desde, hasta, page, size);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Turno> obtener(@PathVariable("id") Long id) {
+        return turnoQueryService.obtener(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping

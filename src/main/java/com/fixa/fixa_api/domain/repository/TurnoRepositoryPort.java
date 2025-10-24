@@ -8,4 +8,5 @@ public interface TurnoRepositoryPort {
     Turno save(Turno turno);
     Optional<Turno> findById(Long id);
     List<Turno> findByEmpleadoIdAndRango(Long empleadoId, java.time.LocalDateTime desde, java.time.LocalDateTime hasta);
+    List<Turno> findByEmpresaIdAndRango(Long empresaId, java.time.LocalDateTime desde, java.time.LocalDateTime hasta);
 }

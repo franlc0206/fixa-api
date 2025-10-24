@@ -55,4 +55,10 @@ public class TurnoRepositoryAdapter implements TurnoRepositoryPort {
         return turnoRepo.findByEmpleado_IdAndFechaHoraInicioBetween(empleadoId, desde, hasta)
                 .stream().map(TurnoMapper::toDomain).collect(Collectors.toList());
     }
+
+    @Override
+    public List<Turno> findByEmpresaIdAndRango(Long empresaId, LocalDateTime desde, LocalDateTime hasta) {
+        return turnoRepo.findByEmpresa_IdAndFechaHoraInicioBetween(empresaId, desde, hasta)
+                .stream().map(TurnoMapper::toDomain).collect(Collectors.toList());
+    }
 }
