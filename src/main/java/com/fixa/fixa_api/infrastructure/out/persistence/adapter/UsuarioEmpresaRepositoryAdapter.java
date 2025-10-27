@@ -61,4 +61,25 @@ public class UsuarioEmpresaRepositoryAdapter implements UsuarioEmpresaRepository
     public Optional<UsuarioEmpresa> findByUsuarioAndEmpresa(Long usuarioId, Long empresaId) {
         return ueRepo.findByUsuario_IdAndEmpresa_Id(usuarioId, empresaId).map(UsuarioEmpresaMapper::toDomain);
     }
+
+    @Override
+    public List<UsuarioEmpresa> findByUsuario(Long usuarioId) {
+        return ueRepo.findByUsuario_Id(usuarioId).stream()
+                .map(UsuarioEmpresaMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioEmpresa> findByEmpresa(Long empresaId) {
+        return ueRepo.findByEmpresa_Id(empresaId).stream()
+                .map(UsuarioEmpresaMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UsuarioEmpresa> findAll() {
+        return ueRepo.findAll().stream()
+                .map(UsuarioEmpresaMapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

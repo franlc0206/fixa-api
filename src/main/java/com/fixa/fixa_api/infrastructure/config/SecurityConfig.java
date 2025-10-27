@@ -2,6 +2,7 @@ package com.fixa.fixa_api.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -51,6 +52,10 @@ public class SecurityConfig {
                                 "/api/auth/register", 
                                 "/api/auth/login"
                         ).permitAll()
+                        .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/empresas").hasRole("SUPERADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/empresas/**").hasRole("SUPERADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/empresas/**").hasRole("SUPERADMIN")
                         .requestMatchers(
                                 "/api/empresas/**",
                                 "/api/empleados/**",

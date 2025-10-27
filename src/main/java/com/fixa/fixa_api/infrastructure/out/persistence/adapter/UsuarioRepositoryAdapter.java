@@ -8,6 +8,8 @@ import com.fixa.fixa_api.infrastructure.out.persistence.repository.UsuarioJpaRep
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class UsuarioRepositoryAdapter implements UsuarioRepositoryPort {
@@ -36,5 +38,15 @@ public class UsuarioRepositoryAdapter implements UsuarioRepositoryPort {
         e.setPasswordHash(passwordHash);
         UsuarioEntity saved = usuarioRepo.save(e);
         return UsuarioMapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Usuario> findById(Long id) {
+        return usuarioRepo.findById(id).map(UsuarioMapper::toDomain);
+    }
+
+    @Override
+    public List<Usuario> findAll() {
+        return usuarioRepo.findAll().stream().map(UsuarioMapper::toDomain).collect(Collectors.toList());
     }
 }

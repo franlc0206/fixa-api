@@ -1,6 +1,11 @@
 # Frontend Roadmap (React + Vite)
 
-Guía de roadmap, arquitectura y buenas prácticas para implementar el Frontend de Fixa (público y backoffice) con React + Vite.
+> RFC – Frontend y Flujo Funcional Completo (v1.0)
+> Autor: Francisco López — Fecha: Octubre 2025
+> Stack: React + Vite + TypeScript + Tailwind (UI)
+> Backend: Spring Boot (Hexagonal), MySQL
+
+Objetivo: Plataforma tipo “PedidosYa” para servicios. Público reserva turnos; empresas operan backoffice; SuperAdmin gestiona el ecosistema.
 
 ## Objetivos
 
@@ -81,6 +86,24 @@ src/
         pages/
           TurnoListPage.tsx
           TurnoDetailPage.tsx (opcional)
+    superadmin/
+      empresas/
+        api.ts              # /api/superadmin/empresas (POST/PUT/PATCH)
+        pages/
+          EmpresaAdminListPage.tsx (opcional)
+          EmpresaAdminEditPage.tsx (opcional)
+      usuarios/
+        api.ts              # /api/superadmin/users
+        pages/
+          UserListPage.tsx
+      relaciones/
+        api.ts              # /api/superadmin/relaciones (GET global paginado / filtros)
+        pages/
+          RelacionesPage.tsx
+      categorias/
+        api.ts              # /api/superadmin/categorias
+        pages/
+          CategoriaListPage.tsx
   shared/
     api/
       http.ts               # axios instance con interceptors (auth, errores)
@@ -113,6 +136,7 @@ package.json
 - Feature-first: cada agregado en `features/<feature>` con `api.ts`, `pages`, `components`, `hooks`.
 - Requests vía `shared/api/http.ts` (Axios con baseURL, interceptors de auth y manejo de errores estándar).
 - React Query para caching: keys por recurso (`['empresas', params]`, `['servicios', empresaId]`).
+- Multi-tenant: tras login: `GET /api/me/empresas`; setear empresa activa en `TenantProvider`.
 - Formularios con RHF + Zod schemas; mensajes de error amigables.
 - Paginación/filtrado por query params (sin estado global innecesario).
 - Componentes puros y pequeños; páginas orquestan.
@@ -125,6 +149,12 @@ package.json
 - Roles UI:
     - Renderizado condicional por `rol` para acciones/botones (ej.: `EMPLEADO` no puede editar empresa).
 - Futuro: JWT + Refresh tokens (Fase 2 de seguridad front).
+
+Flujo post-login (multi-tenant):
+1) Login (Basic) → set Authorization.
+2) `GET /api/me/empresas` → empresas del usuario.
+3) Si 1 → set empresa activa; si >1 → selector.
+4) Las vistas de backoffice consumen `empresaId` activo.
 
 ## Integración con API actual
 
@@ -150,6 +180,11 @@ package.json
 - Servicios: `GET/POST/PUT/DELETE /api/empresas/{id}/servicios`
 - Disponibilidad: `GET/POST/DELETE /api/empleados/{id}/disponibilidad`
 - Turnos internos: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
+
+Notas multi-tenant y permisos:
+- Alta/edición de empresas ahora solo por SuperAdmin:
+  - FE usa `/admin/*` para UI; API usa `/api/superadmin/*`.
+- Backoffice empresa (rol EMPRESA/EMPLEADO) lee y opera recursos de su empresa con validaciones backend.
 
 ## Estado actual
 
@@ -191,6 +226,7 @@ package.json
     - UC-04 Mis turnos (cliente) → `/mis-turnos` [PENDIENTE]
     - UC-05 Registro/Login (OAuth2) → MVP con Basic [DONE]; OAuth2/JWT [PENDIENTE]
     - UC-06 Alta de empresa → `/superadmin/empresas/new` [DONE]; registro dedicado `/empresa/registro` [PENDIENTE]
+      - En API: `POST /api/superadmin/empresas` (solo SUPERADMIN)
     - UC-07 Empleados + Horarios → `/backoffice/empleados/:empresaId`, `/backoffice/disponibilidad/:empleadoId` [DONE]
     - UC-08 Servicios → `/backoffice/servicios/:empresaId` [DONE]
     - UC-09 Configuración reglas → `/backoffice/empresa|configuracion` [PENDIENTE]
@@ -204,6 +240,7 @@ package.json
     - Módulo cliente: EmpresaDetalle/ServicioDetalle con calendario público de turnos [PENDIENTE]
     - Módulo cliente: Mis turnos (ver/cancelar/reprogramar) [PENDIENTE]
     - Backoffice: Turnos (listado/calendario y acciones aprobar/cancelar/completar) [PENDIENTE]
+    - SuperAdmin: listado global de relaciones con paginación FE consumiendo `GET /api/superadmin/relaciones?page=&size=`
 
 - Público
     - `/` → Home
@@ -227,9 +264,12 @@ package.json
     - `/backoffice/empresas/new` y `/backoffice/empresas/:id` (uso interno empresa). Alta global se hace en SuperAdmin.
     - `/backoffice/configuracion` → Configuración de empresa
 - SuperAdmin (privadas)
-    - `/superadmin/empresas` → CRUD global de empresas (alta incluida)
+    - `/admin/empresas` → Alta/edición (usa `/api/superadmin/empresas`)
     - `/superadmin/empresas/new` y `/superadmin/empresas/:id`
-    - (próximo) `/superadmin/categorias`, `/superadmin/usuarios`, `/superadmin/auditoria`
+    - `/admin/usuarios` → `/api/superadmin/users`
+    - `/admin/relaciones` → `/api/superadmin/relaciones`
+    - `/admin/categorias` → `/api/superadmin/categorias`
+    - (próximo) `/admin/auditoria`
     - Archivos: `features/public/empresas/api.ts`, `pages/EmpresasPublicList.tsx`, `hooks/useEmpresas.ts`
     - Éxito: render tabla/lista + paginación; Error: toast estándar; Vacío: estado vacío
 - Público/Servicios por empresa
@@ -264,6 +304,23 @@ package.json
     - Endpoints: `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
     - Keys: `['turnos', params]`, `['turno', id]`
     - Archivos: `features/backoffice/turnos/api.ts`, `pages/TurnoListPage.tsx`
+
+- SuperAdmin/Empresas
+    - Endpoints: `POST/PUT/PATCH /api/superadmin/empresas`
+    - Pages: `EmpresaAdminListPage.tsx` (opcional), `EmpresaAdminEditPage.tsx`
+    - Keys: `['admin-empresas', params]`, `['admin-empresa', id]`
+- SuperAdmin/Usuarios
+    - Endpoints: `GET/POST/PUT/PATCH /api/superadmin/users`
+    - Page: `UserListPage.tsx`
+    - Keys: `['admin-users', params]`
+- SuperAdmin/Relaciones
+    - Endpoints: `GET /api/superadmin/relaciones?usuarioId=&empresaId=` y global paginado `?page=&size=`; `POST`; `DELETE`
+    - Page: `RelacionesPage.tsx`
+    - Keys: `['admin-relaciones', params]`
+- SuperAdmin/Categorías
+    - Endpoints: `GET/POST/PUT/PATCH /api/superadmin/categorias`
+    - Page: `CategoriaListPage.tsx`
+    - Keys: `['admin-categorias', params]`
 
 ## Testing por feature
 
@@ -307,6 +364,12 @@ package.json
 - Turnos: listado y acciones (aprobar/cancelar/completar).
 - Tests de integración con MSW.
 
+### Fase D2 – SuperAdmin
+- Empresas: alta/edición/activar.
+- Usuarios: lista/alta/editar/activar.
+- Relaciones: listado global paginado, alta y baja.
+- Categorías: lista/alta/editar/activar.
+
 ### Fase E – UX/Calidad
 - Estados vacíos, skeletons, toasts globales.
 - Accesibilidad.
@@ -320,6 +383,20 @@ package.json
 - Normalizar errores en Axios (interceptor) y mostrar toasts legibles.
 - Formularios: controlar touched/dirty, feedback en tiempo real con Zod.
 - Reutilizar componentes de tabla/paginación/filtros.
+
+## Mapas de rutas FE → API (resumen)
+
+- Público
+  - FE: `/` → API: `GET /api/public/empresas`
+  - FE: `/empresa/:id` → API: `GET /api/public/empresas/{id}/servicios`
+- Backoffice (empresa)
+  - FE: `/backoffice/*` → API: empleados/servicios/disponibilidad/turnos (scoped por `empresaId` activo)
+  - Turnos: `GET /api/turnos?empresaId=&...`
+- SuperAdmin
+  - FE: `/admin/empresas` → API: `POST/PUT/PATCH /api/superadmin/empresas`
+  - FE: `/admin/usuarios` → API: `GET/POST/PUT/PATCH /api/superadmin/users`
+  - FE: `/admin/relaciones` → API: `GET/POST/DELETE /api/superadmin/relaciones`
+  - FE: `/admin/categorias` → API: `GET/POST/PUT/PATCH /api/superadmin/categorias`
 
 ## Scripts (package.json sugerido)
 

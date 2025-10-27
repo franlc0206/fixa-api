@@ -10,4 +10,6 @@ public interface UsuarioEmpresaJpaRepository extends JpaRepository<UsuarioEmpres
     boolean existsByUsuario_IdAndEmpresa_Id(Long usuarioId, Long empresaId);
     Optional<UsuarioEmpresaEntity> findByUsuario_IdAndEmpresa_Id(Long usuarioId, Long empresaId);
     List<UsuarioEmpresaEntity> findByUsuario_IdAndActivoTrue(Long usuarioId);
+    List<UsuarioEmpresaEntity> findByUsuario_Id(Long usuarioId);
+    List<UsuarioEmpresaEntity> findByEmpresa_Id(Long empresaId);
 }

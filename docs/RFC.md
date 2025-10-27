@@ -1,6 +1,6 @@
-# 🧾 RFC – Sistema de Turnos Online (Turnero Web)
+# 🧾 RFC – Turnero Web (v1.2)
 
-Versión: 2.0  
+Versión: 1.2  
 Autor: Francisco López  
 Fecha: Octubre 2025
 
@@ -8,12 +8,11 @@ Fecha: Octubre 2025
 
 ## 1. Objetivo
 
-Desarrollar una plataforma web moderna y flexible para la gestión de turnos en línea, que permita a empresas de servicios (peluquerías, barberías, centros de estética, gimnasios, consultorios, etc.) ofrecer reservas a clientes de forma simple, segura y configurable.
-El sistema permitirá:
-- Alta de empresas y configuración de sus servicios, empleados y reglas.
-- Reservas configurables con aprobación, validación o confirmación automática.
-- Control granular de horarios, disponibilidad, bloqueos y notificaciones.
-- Escalabilidad para múltiples empresas (modelo multi-tenant).
+Plataforma tipo “PedidoYa” para servicios con reserva de turnos (peluquerías, estética, etc.).
+Enfoque MVP actual:
+- Público: explorar empresas/servicios y reservar (anónimo opcional).
+- Backoffice: operar turnos, empleados, servicios y disponibilidad.
+- Multi-tenant: un usuario puede gestionar múltiples empresas.
 
 ---
 
@@ -190,10 +189,9 @@ Nota de implementación por fases:
 
 ---
 
-## 6. Arquitectura técnica
+## 6. Arquitectura técnica (alineada a implementación actual)
 
-- Frontend público: React / Next.js
-- Backoffice empresa: React (Panel)
+- Frontend (público y backoffice): React + Vite + TypeScript
 - Backend: Java Spring Boot
 - Base de datos: MySQL
 - Mensajería: Twilio / WhatsApp Cloud API
@@ -223,10 +221,11 @@ src/main/java/com/fixa/turnero/
 
 ## 7. Seguridad – Roadmap (OAuth2.0 + MFA)
 
-- Fase 1 (MVP)
-  - Login clásico con email/password (BCrypt)
-  - Roles: superadmin, empresa, empleado, cliente
-  - Endpoints públicos: /auth, /health
+- Fase 1 (MVP actual)
+  - HTTP Basic en backoffice (BCrypt en backend)
+  - Roles: SUPERADMIN, EMPRESA, EMPLEADO, CLIENTE
+  - CORS: permitido `http://localhost:5173`
+  - Endpoints públicos: `/api/public/**`, `/health`, `/api/auth/*`
 - Fase 2
   - OAuth2 (Google, Facebook)
   - Alta automática del usuario cliente tras login social
@@ -246,6 +245,11 @@ src/main/java/com/fixa/turnero/
 - Configuración de reglas editable desde el panel
 - Notificaciones asíncronas (event-driven)
 
+### Multi-tenant (implementado)
+- Relación `UsuarioEmpresa` (N:M) con `rolEmpresa` y `activo`.
+- Endpoint: `GET /api/me/empresas` devuelve empresas del usuario actual.
+- Servicios de backoffice validan pertenencia (403 si no pertenece).
+
 ---
 
 ## 9. KPIs / Métricas de éxito (MVP)
@@ -254,6 +258,23 @@ src/main/java/com/fixa/turnero/
 - Reserva anónima funcional con aprobación manual.
 - Validación telefónica básica operativa.
 - Login clásico funcionando.
+
+---
+
+## 10. Contratos de API (resumen)
+
+- Fuente de verdad: `docs/API_ROUTES.md` (incluye endpoints, query params y payloads).
+- Principales:
+  - Público: `GET /api/public/empresas`, `GET /api/public/empresas/{empresaId}/servicios`, `POST /api/public/turnos`
+  - Auth: `POST /api/auth/login`, `POST /api/auth/register`
+  - Multi-tenant: `GET /api/me/empresas`
+  - Turnos: `GET /api/turnos`, `GET /api/turnos/{id}`, `POST /api/turnos`, `POST /api/turnos/{id}/aprobar|cancelar|completar`
+
+### Flujo post-login (Front)
+1) Login (Basic) → set `Authorization` en Axios.
+2) `GET /api/me/empresas` → lista de empresas del usuario.
+3) Si 1 → set “empresa activa”. Si >1 → mostrar selector (TenantProvider).
+4) Todas las vistas de backoffice usan el `empresaId` activo.
 
 ---
 
@@ -269,6 +290,7 @@ src/main/java/com/fixa/turnero/
 
 ## 11. Referencias
 
-- ROADMAP: `docs/ROADMAP.md`
+- Frontend Roadmap: `docs/FRONTEND_ROADMAP.md`
+- Rutas API: `docs/API_ROUTES.md`
 - Guía de scaffolding: `README.md`
 - Configuración: `src/main/resources/application.yml`

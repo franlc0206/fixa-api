@@ -11,4 +11,7 @@ public interface UsuarioEmpresaRepositoryPort {
     UsuarioEmpresa save(UsuarioEmpresa ue);
     void deleteByUsuarioAndEmpresa(Long usuarioId, Long empresaId);
     Optional<UsuarioEmpresa> findByUsuarioAndEmpresa(Long usuarioId, Long empresaId);
+    List<UsuarioEmpresa> findByUsuario(Long usuarioId);
+    List<UsuarioEmpresa> findByEmpresa(Long empresaId);
+    List<UsuarioEmpresa> findAll();
 }
