@@ -19,6 +19,9 @@ public class EmpresaEntity {
     @Column(length = 150)
     private String nombre;
 
+    @Column(length = 200, unique = true, nullable = false)
+    private String slug;
+
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 

@@ -32,6 +32,11 @@ public class EmpleadoService {
         return empleadoPort.findByEmpresaId(empresaId);
     }
 
+    public List<Empleado> listarPublicosPorEmpresa(Long empresaId) {
+        // No requiere validación de pertenencia - es público
+        return empleadoPort.findPublicosByEmpresaId(empresaId);
+    }
+
     public List<Empleado> listarPorEmpresa(Long empresaId, Boolean activo) {
         validarPertenencia(empresaId);
         List<Empleado> base = empleadoPort.findByEmpresaId(empresaId);

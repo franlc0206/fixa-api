@@ -14,6 +14,10 @@ public class TurnoEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(name = "version")
+    private Long version; // Optimistic locking: JPA incrementa automáticamente en cada actualización
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "fk_servicio")
     private ServicioEntity servicio;

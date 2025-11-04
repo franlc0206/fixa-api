@@ -62,6 +62,34 @@ public class EmpleadoController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Nuevos endpoints anidados por empresa (consistencia REST + guards FE)
+    @GetMapping("/api/empresas/{empresaId}/empleados/{id}")
+    public ResponseEntity<Empleado> obtenerPorEmpresa(@PathVariable Long empresaId, @PathVariable Long id) {
+        return empleadoService.obtener(id)
+                .filter(e -> e.getEmpresaId() != null && e.getEmpresaId().equals(empresaId))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/api/empresas/{empresaId}/empleados/{id}")
+    public ResponseEntity<Empleado> actualizarPorEmpresa(@PathVariable Long empresaId,
+                                                         @PathVariable Long id,
+                                                         @Valid @RequestBody EmpleadoRequest req) {
+        return empleadoService.obtener(id)
+                .filter(e -> e.getEmpresaId() != null && e.getEmpresaId().equals(empresaId))
+                .map(existing -> {
+                    Empleado d = new Empleado();
+                    d.setId(id);
+                    d.setEmpresaId(empresaId); // se toma del path para evitar tampering
+                    d.setNombre(req.getNombre());
+                    d.setApellido(req.getApellido());
+                    d.setRol(req.getRol());
+                    d.setActivo(req.isActivo());
+                    return ResponseEntity.ok(empleadoService.guardar(d));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/api/empleados/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         if (!empleadoService.eliminar(id)) return ResponseEntity.notFound().build();

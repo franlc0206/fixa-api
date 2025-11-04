@@ -1,8 +1,10 @@
 package com.fixa.fixa_api.infrastructure.in.web;
 
 import com.fixa.fixa_api.application.service.EmpresaService;
+import com.fixa.fixa_api.application.service.EmpleadoService;
 import com.fixa.fixa_api.application.service.ServicioService;
 import com.fixa.fixa_api.domain.model.Empresa;
+import com.fixa.fixa_api.domain.model.Empleado;
 import com.fixa.fixa_api.domain.model.Servicio;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +17,12 @@ public class PublicEmpresaController {
 
     private final EmpresaService empresaService;
     private final ServicioService servicioService;
+    private final EmpleadoService empleadoService;
 
-    public PublicEmpresaController(EmpresaService empresaService, ServicioService servicioService) {
+    public PublicEmpresaController(EmpresaService empresaService, ServicioService servicioService, EmpleadoService empleadoService) {
         this.empresaService = empresaService;
         this.servicioService = servicioService;
+        this.empleadoService = empleadoService;
     }
 
     // Catálogo público: solo empresas visibles
@@ -42,5 +46,32 @@ public class PublicEmpresaController {
                 ? servicioService.listarPorEmpresaPaginado(empresaId, soloActivos, page, size)
                 : (soloActivos ? servicioService.listarPorEmpresa(empresaId, true) : servicioService.listarPorEmpresa(empresaId));
         return ResponseEntity.ok(result);
+    }
+
+    // Detalle público de empresa por ID (para banner/SEO)
+    @GetMapping("/{empresaId}")
+    public ResponseEntity<Empresa> obtenerPublico(@PathVariable Long empresaId) {
+        return empresaService.obtener(empresaId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Detalle público de empresa por slug (para URLs amigables)
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<Empresa> obtenerPorSlug(@PathVariable String slug) {
+        return empresaService.obtenerPorSlug(slug)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Empleados públicos de empresa por slug
+    @GetMapping("/slug/{slug}/empleados")
+    public ResponseEntity<List<Empleado>> listarEmpleadosPublicos(@PathVariable String slug) {
+        return empresaService.obtenerPorSlug(slug)
+                .map(empresa -> {
+                    List<Empleado> empleados = empleadoService.listarPublicosPorEmpresa(empresa.getId());
+                    return ResponseEntity.ok(empleados);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }

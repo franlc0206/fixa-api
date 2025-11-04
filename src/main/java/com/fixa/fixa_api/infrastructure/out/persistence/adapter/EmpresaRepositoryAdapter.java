@@ -30,6 +30,11 @@ public class EmpresaRepositoryAdapter implements EmpresaRepositoryPort {
     }
 
     @Override
+    public Optional<Empresa> findBySlug(String slug) {
+        return empresaRepo.findBySlug(slug).map(EmpresaMapper::toDomain);
+    }
+
+    @Override
     public Empresa save(Empresa empresa) {
         EmpresaEntity entity = empresa.getId() != null ? empresaRepo.findById(empresa.getId()).orElse(new EmpresaEntity()) : new EmpresaEntity();
         CategoriaEntity cat = null;

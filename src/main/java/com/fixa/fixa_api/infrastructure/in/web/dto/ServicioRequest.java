@@ -5,16 +5,22 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public class ServicioRequest {
-    @NotNull
+    // empresaId es opcional en el body porque puede venir del @PathVariable en endpoints como POST /api/empresas/{empresaId}/servicios
     private Long empresaId;
+    
     @NotBlank
     private String nombre;
+    
     private String descripcion;
+    
     @NotNull
     private Integer duracionMinutos;
+    
     private boolean requiereEspacioLibre;
+    
     @NotNull
     private BigDecimal costo;
+    
     private boolean requiereSena;
     private boolean activo = true;
     private Long categoriaId; // opcional

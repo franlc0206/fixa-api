@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface VerificacionTelefonoJpaRepository extends JpaRepository<VerificacionTelefonoEntity, Long> {
     Optional<VerificacionTelefonoEntity> findTopByTelefonoOrderByFechaEnvioDesc(String telefono);
+    Optional<VerificacionTelefonoEntity> findFirstByTelefonoAndValidadoFalseOrderByFechaEnvioDesc(String telefono);
 }

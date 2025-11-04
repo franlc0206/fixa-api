@@ -10,6 +10,7 @@ public class Servicio {
     private String descripcion;
     private Integer duracionMinutos;
     private boolean requiereEspacioLibre;
+    private String patronBloques;
     private java.math.BigDecimal costo;
     private boolean requiereSena;
     private boolean activo;

@@ -7,6 +7,7 @@ public class Empresa {
     private Long id;
     private Long usuarioAdminId;
     private String nombre;
+    private String slug;
     private String descripcion;
     private String direccion;
     private String telefono;

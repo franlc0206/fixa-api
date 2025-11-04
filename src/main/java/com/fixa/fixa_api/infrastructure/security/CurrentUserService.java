@@ -24,7 +24,28 @@ public class CurrentUserService {
     }
 
     public Optional<Long> getCurrentUserId() {
-        return getCurrentUser().map(Usuario::getId);
+        System.out.println(" [CURRENT USER SERVICE] Obteniendo usuario actual...");
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth == null) {
+            System.out.println(" [CURRENT USER SERVICE] Authentication es NULL");
+            return Optional.empty();
+        }
+        
+        System.out.println(" [CURRENT USER SERVICE] Authentication encontrado: " + auth.getClass().getSimpleName());
+        System.out.println(" [CURRENT USER SERVICE] Principal: " + (auth.getPrincipal() != null ? auth.getPrincipal().getClass().getSimpleName() : "NULL"));
+        System.out.println(" [CURRENT USER SERVICE] Name: " + auth.getName());
+        System.out.println(" [CURRENT USER SERVICE] Authenticated: " + auth.isAuthenticated());
+        
+        Optional<Usuario> userOpt = getCurrentUser();
+        
+        if (userOpt.isPresent()) {
+            System.out.println(" [CURRENT USER SERVICE] Usuario encontrado - ID: " + userOpt.get().getId() + ", Email: " + userOpt.get().getEmail());
+            return userOpt.map(Usuario::getId);
+        } else {
+            System.out.println(" [CURRENT USER SERVICE] Usuario NO encontrado en BD");
+            return Optional.empty();
+        }
     }
 
     public String getCurrentUserEmailOrThrow() {

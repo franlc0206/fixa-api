@@ -12,6 +12,7 @@ public class EmpresaMapper {
         d.setId(e.getId());
         d.setUsuarioAdminId(e.getUsuarioAdmin() != null ? e.getUsuarioAdmin().getId() : null);
         d.setNombre(e.getNombre());
+        d.setSlug(e.getSlug());
         d.setDescripcion(e.getDescripcion());
         d.setDireccion(e.getDireccion());
         d.setTelefono(e.getTelefono());
@@ -28,6 +29,7 @@ public class EmpresaMapper {
 
     public static void copyToEntity(Empresa d, EmpresaEntity e, CategoriaEntity categoria) {
         e.setNombre(d.getNombre());
+        e.setSlug(d.getSlug());
         e.setDescripcion(d.getDescripcion());
         e.setDireccion(d.getDireccion());
         e.setTelefono(d.getTelefono());

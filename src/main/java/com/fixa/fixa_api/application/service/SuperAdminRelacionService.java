@@ -90,4 +90,14 @@ public class SuperAdminRelacionService {
         }
         uePort.deleteByUsuarioAndEmpresa(usuarioId, empresaId);
     }
+
+    public void activar(Long usuarioId, Long empresaId, boolean activo) {
+        if (usuarioId == null || empresaId == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "usuarioId y empresaId requeridos");
+        }
+        UsuarioEmpresa rel = uePort.findByUsuarioAndEmpresa(usuarioId, empresaId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Relación no encontrada"));
+        rel.setActivo(activo);
+        uePort.save(rel);
+    }
 }

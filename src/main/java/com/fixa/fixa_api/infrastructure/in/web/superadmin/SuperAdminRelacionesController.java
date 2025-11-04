@@ -45,4 +45,12 @@ public class SuperAdminRelacionesController {
         service.remove(usuarioId, empresaId);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/activar")
+    public ResponseEntity<Void> activar(@RequestParam("usuarioId") Long usuarioId,
+                                        @RequestParam("empresaId") Long empresaId,
+                                        @RequestParam("activo") boolean activo) {
+        service.activar(usuarioId, empresaId, activo);
+        return ResponseEntity.noContent().build();
+    }
 }

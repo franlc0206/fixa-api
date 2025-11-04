@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface EmpleadoJpaRepository extends JpaRepository<EmpleadoEntity, Long> {
     List<EmpleadoEntity> findByEmpresa_Id(Long empresaId);
+    List<EmpleadoEntity> findByEmpresa_IdAndTrabajaPublicamenteTrueAndActivoTrue(Long empresaId);
 }

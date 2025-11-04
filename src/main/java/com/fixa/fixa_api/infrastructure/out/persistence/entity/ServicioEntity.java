@@ -34,6 +34,9 @@ public class ServicioEntity {
     @Column(name = "requiere_espacio_libre")
     private boolean requiereEspacioLibre;
 
+    @Column(name = "patron_bloques", columnDefinition = "TEXT")
+    private String patronBloques; // JSON para configuración avanzada
+
     private BigDecimal costo;
 
     @Column(name = "requiere_sena")

@@ -34,6 +34,14 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
     }
 
     @Override
+    public List<Empleado> findPublicosByEmpresaId(Long empresaId) {
+        return empleadoRepo.findByEmpresa_IdAndTrabajaPublicamenteTrueAndActivoTrue(empresaId)
+                .stream()
+                .map(EmpleadoMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Optional<Empleado> findById(Long id) {
         return empleadoRepo.findById(id).map(EmpleadoMapper::toDomain);
     }

@@ -17,6 +17,24 @@ CORS: http://localhost:5173
   ]
   ```
 
+- GET /api/public/empresas/{id}
+  - 200 Respuesta (detalle):
+  ```json
+  {
+    "id": 1,
+    "nombre": "Peluquería Moderna",
+    "descripcion": "Los mejores cortes de la ciudad",
+    "direccion": "Av. Corrientes 1234",
+    "telefono": "+54 11 1234-5678",
+    "email": "contacto@peluqueriamoderna.com",
+    "categoriaId": 2,
+    "visibilidadPublica": true,
+    "activo": true,
+    "bannerUrl": null,
+    "fotoUrl": null
+  }
+  ```
+
 - GET /api/public/empresas/{empresaId}/servicios
   - Query: soloActivos?, page?, size?
   - 200 Respuesta:
@@ -150,6 +168,20 @@ CORS: http://localhost:5173
   ```
   - 200: Empleado
 
+- GET /api/empresas/{empresaId}/empleados/{id}
+  - 200: Empleado | 404
+  - Ejemplo 200:
+  ```json
+  { "id": 5, "empresaId": 1, "nombre":"Ana", "apellido":"García", "rol":"ESTILISTA", "activo": true }
+  ```
+
+- PUT /api/empresas/{empresaId}/empleados/{id}
+  - Body:
+  ```json
+  { "nombre":"Ana", "apellido":"G.", "rol":"ESTILISTA", "activo": true }
+  ```
+  - 200: Empleado | 404
+
 ---
 
 ## Servicios (por empresa)
@@ -164,6 +196,20 @@ CORS: http://localhost:5173
   { "nombre":"Corte", "descripcion":"", "duracionMinutos":30, "requiereEspacioLibre":false, "costo":1000, "requiereSena":false, "activo":true, "categoriaId":2 }
   ```
   - 200: Servicio
+
+- GET /api/empresas/{empresaId}/servicios/{id}
+  - 200: Servicio | 404
+  - Ejemplo 200:
+  ```json
+  { "id": 10, "empresaId": 1, "nombre":"Corte", "descripcion":"", "duracionMinutos":30, "requiereEspacioLibre":false, "costo":1000, "requiereSena":false, "activo":true, "categoriaId":2 }
+  ```
+
+- PUT /api/empresas/{empresaId}/servicios/{id}
+  - Body:
+  ```json
+  { "nombre":"Corte clásico", "descripcion":"Con navaja", "duracionMinutos":30, "costo":1200, "requiereSena":false, "categoriaId":2, "activo":true }
+  ```
+  - 200: Servicio | 404
 
 ---
 

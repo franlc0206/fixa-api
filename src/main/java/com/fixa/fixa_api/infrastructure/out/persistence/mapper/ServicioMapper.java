@@ -15,6 +15,7 @@ public class ServicioMapper {
         d.setDescripcion(e.getDescripcion());
         d.setDuracionMinutos(e.getDuracionMinutos());
         d.setRequiereEspacioLibre(e.isRequiereEspacioLibre());
+        d.setPatronBloques(e.getPatronBloques());
         d.setCosto(e.getCosto());
         d.setRequiereSena(e.isRequiereSena());
         d.setActivo(e.isActivo());
@@ -28,6 +29,7 @@ public class ServicioMapper {
         e.setDescripcion(d.getDescripcion());
         e.setDuracionMinutos(d.getDuracionMinutos());
         e.setRequiereEspacioLibre(d.isRequiereEspacioLibre());
+        e.setPatronBloques(d.getPatronBloques());
         e.setCosto(d.getCosto());
         e.setRequiereSena(d.isRequiereSena());
         e.setActivo(d.isActivo());

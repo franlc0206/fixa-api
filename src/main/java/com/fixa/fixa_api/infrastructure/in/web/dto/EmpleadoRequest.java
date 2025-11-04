@@ -1,15 +1,17 @@
 package com.fixa.fixa_api.infrastructure.in.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public class EmpleadoRequest {
-    @NotNull
+    // empresaId es opcional en el body porque puede venir del @PathVariable en endpoints como POST /api/empresas/{empresaId}/empleados
     private Long empresaId;
+    
     @NotBlank
     private String nombre;
+    
     @NotBlank
     private String apellido;
+    
     private String rol;
     private boolean activo = true;
 

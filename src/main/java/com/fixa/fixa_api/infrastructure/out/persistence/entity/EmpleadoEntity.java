@@ -29,6 +29,9 @@ public class EmpleadoEntity {
     @Column(length = 100)
     private String rol; // peluquero, colorista, etc.
 
+    @Column(name = "trabaja_publicamente")
+    private boolean trabajaPublicamente = true;
+
     @Column
     private boolean activo;
 }

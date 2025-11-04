@@ -15,6 +15,7 @@ public class EmpleadoMapper {
         d.setNombre(e.getNombre());
         d.setApellido(e.getApellido());
         d.setRol(e.getRol());
+        d.setTrabajaPublicamente(e.isTrabajaPublicamente());
         d.setActivo(e.isActivo());
         return d;
     }
@@ -25,6 +26,7 @@ public class EmpleadoMapper {
         e.setNombre(d.getNombre());
         e.setApellido(d.getApellido());
         e.setRol(d.getRol());
+        e.setTrabajaPublicamente(d.isTrabajaPublicamente());
         e.setActivo(d.isActivo());
     }
 }

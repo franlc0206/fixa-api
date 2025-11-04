@@ -41,6 +41,12 @@ public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCa
     @Override
     @Transactional
     public Turno ejecutar(Turno turno) {
+        // BLOQUEO TRANSACCIONAL:
+        // @Transactional provee aislamiento REPEATABLE_READ (MySQL default) que previene lecturas no repetibles.
+        // Para mayor seguridad ante alta concurrencia, se podría agregar @Lock(LockModeType.PESSIMISTIC_WRITE)
+        // en el repositorio JPA al consultar turnos existentes, bloqueando las filas hasta fin de transacción.
+        // En MVP actual, el bloqueo optimista + validación de solapamiento es suficiente.
+        
         // Cargar entidades requeridas
         var servicio = servicioPort.findById(turno.getServicioId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
