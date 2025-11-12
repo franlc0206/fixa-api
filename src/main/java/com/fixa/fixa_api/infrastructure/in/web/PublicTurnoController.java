@@ -1,5 +1,6 @@
 package com.fixa.fixa_api.infrastructure.in.web;
 
+import com.fixa.fixa_api.application.service.TurnoQueryService;
 import com.fixa.fixa_api.application.usecase.CrearTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CrearVerificacionUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
@@ -10,18 +11,55 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/public/turnos")
 public class PublicTurnoController {
 
     private final CrearTurnoUseCase crearTurnoUseCase;
     private final CrearVerificacionUseCase crearVerificacionUseCase;
+    private final TurnoQueryService turnoQueryService;
 
     public PublicTurnoController(
             CrearTurnoUseCase crearTurnoUseCase,
-            CrearVerificacionUseCase crearVerificacionUseCase) {
+            CrearVerificacionUseCase crearVerificacionUseCase,
+            TurnoQueryService turnoQueryService) {
         this.crearTurnoUseCase = crearTurnoUseCase;
         this.crearVerificacionUseCase = crearVerificacionUseCase;
+        this.turnoQueryService = turnoQueryService;
+    }
+
+    /**
+     * Obtener turnos públicos para ver disponibilidad
+     * Solo devuelve turnos CONFIRMADOS y PENDIENTES para mostrar horarios ocupados
+     */
+    @GetMapping
+    public ResponseEntity<List<Turno>> listarTurnosPublicos(
+            @RequestParam(required = false) Long empleadoId,
+            @RequestParam(required = false) String fecha) { // formato: yyyy-MM-dd
+        
+        LocalDateTime desde = null;
+        LocalDateTime hasta = null;
+        
+        if (fecha != null) {
+            LocalDate fechaLocal = LocalDate.parse(fecha);
+            desde = fechaLocal.atStartOfDay();
+            hasta = fechaLocal.plusDays(1).atStartOfDay();
+        }
+        
+        // Listar turnos sin filtro de estado (null)
+        List<Turno> turnos = turnoQueryService.listar(null, empleadoId, null, desde, hasta, null, null);
+        
+        // Filtrar solo CONFIRMADO y PENDIENTE para mostrar horarios ocupados
+        List<Turno> turnosOcupados = turnos.stream()
+                .filter(t -> "CONFIRMADO".equalsIgnoreCase(t.getEstado()) || 
+                            "PENDIENTE".equalsIgnoreCase(t.getEstado()))
+                .toList();
+        
+        return ResponseEntity.ok(turnosOcupados);
     }
 
     @PostMapping

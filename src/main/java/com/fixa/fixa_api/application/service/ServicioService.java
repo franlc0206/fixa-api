@@ -43,9 +43,34 @@ public class ServicioService {
         validarPertenencia(empresaId);
         List<Servicio> filtrado = listarPorEmpresa(empresaId, activo);
         if (page == null || size == null || page < 0 || size <= 0) return filtrado;
-        int from = Math.min(page * size, filtrado.size());
-        int to = Math.min(from + size, filtrado.size());
-        return filtrado.subList(from, to);
+        int start = page * size;
+        int end = Math.min(start + size, filtrado.size());
+        if (start > filtrado.size()) return List.of();
+        return filtrado.subList(start, end);
+    }
+
+    // ============ MÉTODOS PÚBLICOS (sin validación de pertenencia) ============
+
+    /**
+     * Listar servicios públicos por empresa (sin autenticación requerida)
+     * Para uso en endpoints públicos como /api/public/empresas/{id}/servicios
+     */
+    public List<Servicio> listarPorEmpresaPublico(Long empresaId, Boolean activo) {
+        List<Servicio> base = servicioPort.findByEmpresaId(empresaId);
+        if (activo == null) return base;
+        return base.stream().filter(s -> s.isActivo() == activo).collect(Collectors.toList());
+    }
+
+    /**
+     * Listar servicios públicos con paginación (sin autenticación requerida)
+     */
+    public List<Servicio> listarPorEmpresaPaginadoPublico(Long empresaId, Boolean activo, Integer page, Integer size) {
+        List<Servicio> filtrado = listarPorEmpresaPublico(empresaId, activo);
+        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        int start = page * size;
+        int end = Math.min(start + size, filtrado.size());
+        if (start > filtrado.size()) return List.of();
+        return filtrado.subList(start, end);
     }
 
     public Optional<Servicio> obtener(Long id) {

@@ -1,8 +1,10 @@
 package com.fixa.fixa_api.infrastructure.config;
 
 import com.fixa.fixa_api.infrastructure.security.BackofficeAccessFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -18,6 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -25,6 +29,9 @@ import java.util.List;
 public class SecurityConfig {
 
     private final BackofficeAccessFilter backofficeAccessFilter;
+
+    @Value("${ALLOWED_ORIGINS:http://localhost:5174}")
+    private String allowedOrigins;
 
     public SecurityConfig(BackofficeAccessFilter backofficeAccessFilter) {
         this.backofficeAccessFilter = backofficeAccessFilter;
@@ -49,24 +56,52 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        config.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:5174") : origins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin"));
+        config.setExposedHeaders(List.of("Location"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    @Bean
+    public CorsFilter corsWebFilter() {
+        return new CorsFilter(corsConfigurationSource());
+    }
+
+    @Bean
+    @Order(1)
+    public SecurityFilterChain publicFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/public/**", "/api/auth/**", "/health", "/actuator/**")
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
+                );
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain protectedFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                // NOTA: Removido el BackofficeAccessFilter - La verificación de empresa
-                // se hace directamente en los controllers cuando es necesario
-                // .addFilterAfter(backofficeAccessFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints completamente públicos (sin auth requerida)
-                        .requestMatchers(
-                                "/health",
-                                "/api/auth/**",
-                                "/api/public/**"
-                        ).permitAll()
                         // SuperAdmin exclusivo
                         .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
-                        // BackOffice (filtrado por BackofficeAccessFilter)
-                        .requestMatchers("/api/backoffice/**").hasAnyRole("SUPERADMIN", "EMPRESA", "EMPLEADO")
+                        // BackOffice requiere autenticación
+                        .requestMatchers("/api/backoffice/**").authenticated()
                         // Empresas: SuperAdmin para crear/modificar
                         .requestMatchers(HttpMethod.POST, "/api/empresas").hasRole("SUPERADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/empresas/**").hasRole("SUPERADMIN")
@@ -77,29 +112,13 @@ public class SecurityConfig {
                                 "/api/empleados/**",
                                 "/api/servicios/**",
                                 "/api/disponibilidad/**"
-                        ).hasAnyRole("SUPERADMIN", "EMPRESA")
+                        ).authenticated()
                         // Turnos
-                        .requestMatchers(
-                                "/api/turnos/**"
-                        ).hasAnyRole("SUPERADMIN", "EMPRESA", "EMPLEADO")
+                        .requestMatchers("/api/turnos/**").authenticated()
                         // Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());
         return http.build();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin"));
-        config.setExposedHeaders(List.of("Location"));
-        config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
     }
 }

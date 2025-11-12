@@ -1,0 +1,21 @@
+# Maven build output
+target/
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+node_modules/
+.env
+.env.*
