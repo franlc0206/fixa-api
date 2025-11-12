@@ -30,7 +30,7 @@ public class SecurityConfig {
 
     private final BackofficeAccessFilter backofficeAccessFilter;
 
-    @Value("${ALLOWED_ORIGINS:http://localhost:5174}")
+    @Value("${ALLOWED_ORIGINS:http://localhost:5173}")
     private String allowedOrigins;
 
     public SecurityConfig(BackofficeAccessFilter backofficeAccessFilter) {
