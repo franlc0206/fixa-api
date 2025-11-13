@@ -64,7 +64,8 @@ public class SecurityConfig {
                 .toList();
         config.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:5174") : origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin"));
+        // Allow all headers to avoid preflight rejections due to custom headers
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Location"));
         config.setAllowCredentials(true);
 
@@ -86,6 +87,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().permitAll()
                 );
         return http.build();
@@ -98,6 +100,8 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // Permitir preflight CORS globalmente
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // SuperAdmin exclusivo
                         .requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
                         // BackOffice requiere autenticación
