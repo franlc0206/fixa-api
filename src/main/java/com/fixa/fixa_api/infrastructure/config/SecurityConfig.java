@@ -62,7 +62,8 @@ public class SecurityConfig {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-        config.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:5174") : origins);
+        // Use patterns to be resilient to proxy header nuances
+        config.setAllowedOriginPatterns(origins.isEmpty() ? List.of("http://localhost:5174") : origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // Allow all headers to avoid preflight rejections due to custom headers
         config.setAllowedHeaders(List.of("*"));
