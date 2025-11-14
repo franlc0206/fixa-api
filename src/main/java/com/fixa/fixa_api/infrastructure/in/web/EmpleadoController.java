@@ -21,15 +21,16 @@ public class EmpleadoController {
     @GetMapping("/api/empresas/{empresaId}/empleados")
     public ResponseEntity<List<Empleado>> listar(@PathVariable Long empresaId,
                                                  @RequestParam(value = "activo", required = false) Boolean activo,
+                                                 @RequestParam(value = "visibles", required = false) Boolean visibles,
                                                  @RequestParam(value = "page", required = false) Integer page,
                                                  @RequestParam(value = "size", required = false) Integer size) {
         if (page != null && size != null) {
-            return ResponseEntity.ok(empleadoService.listarPorEmpresaPaginado(empresaId, activo, page, size));
+            return ResponseEntity.ok(empleadoService.listarPorEmpresaPaginado(empresaId, activo, visibles, page, size));
         }
-        if (activo == null) {
+        if (activo == null && visibles == null) {
             return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId));
         }
-        return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId, activo));
+        return ResponseEntity.ok(empleadoService.listarPorEmpresa(empresaId, activo, visibles));
     }
 
     @PostMapping("/api/empresas/{empresaId}/empleados")
@@ -39,6 +40,7 @@ public class EmpleadoController {
         d.setNombre(req.getNombre());
         d.setApellido(req.getApellido());
         d.setRol(req.getRol());
+        d.setTrabajaPublicamente(req.isTrabajaPublicamente());
         d.setActivo(req.isActivo());
         return ResponseEntity.ok(empleadoService.guardar(d));
     }
@@ -57,6 +59,7 @@ public class EmpleadoController {
             d.setNombre(req.getNombre());
             d.setApellido(req.getApellido());
             d.setRol(req.getRol());
+            d.setTrabajaPublicamente(req.isTrabajaPublicamente());
             d.setActivo(req.isActivo());
             return ResponseEntity.ok(empleadoService.guardar(d));
         }).orElse(ResponseEntity.notFound().build());
@@ -84,6 +87,7 @@ public class EmpleadoController {
                     d.setNombre(req.getNombre());
                     d.setApellido(req.getApellido());
                     d.setRol(req.getRol());
+                    d.setTrabajaPublicamente(req.isTrabajaPublicamente());
                     d.setActivo(req.isActivo());
                     return ResponseEntity.ok(empleadoService.guardar(d));
                 })

@@ -37,16 +37,18 @@ public class EmpleadoService {
         return empleadoPort.findPublicosByEmpresaId(empresaId);
     }
 
-    public List<Empleado> listarPorEmpresa(Long empresaId, Boolean activo) {
+    public List<Empleado> listarPorEmpresa(Long empresaId, Boolean activo, Boolean visibles) {
         validarPertenencia(empresaId);
-        List<Empleado> base = empleadoPort.findByEmpresaId(empresaId);
+        List<Empleado> base = (visibles != null && visibles)
+                ? empleadoPort.findPublicosByEmpresaId(empresaId)
+                : empleadoPort.findByEmpresaId(empresaId);
         if (activo == null) return base;
         return base.stream().filter(e -> e.isActivo() == activo).collect(Collectors.toList());
     }
 
-    public List<Empleado> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Integer page, Integer size) {
+    public List<Empleado> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Boolean visibles, Integer page, Integer size) {
         validarPertenencia(empresaId);
-        List<Empleado> filtrado = listarPorEmpresa(empresaId, activo);
+        List<Empleado> filtrado = listarPorEmpresa(empresaId, activo, visibles);
         if (page == null || size == null || page < 0 || size <= 0) return filtrado;
         int from = Math.min(page * size, filtrado.size());
         int to = Math.min(from + size, filtrado.size());

@@ -13,6 +13,7 @@ public class EmpleadoRequest {
     private String apellido;
     
     private String rol;
+    private boolean trabajaPublicamente = true;
     private boolean activo = true;
 
     public Long getEmpresaId() { return empresaId; }
@@ -23,6 +24,8 @@ public class EmpleadoRequest {
     public void setApellido(String apellido) { this.apellido = apellido; }
     public String getRol() { return rol; }
     public void setRol(String rol) { this.rol = rol; }
+    public boolean isTrabajaPublicamente() { return trabajaPublicamente; }
+    public void setTrabajaPublicamente(boolean trabajaPublicamente) { this.trabajaPublicamente = trabajaPublicamente; }
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }
 }

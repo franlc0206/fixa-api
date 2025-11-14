@@ -44,6 +44,14 @@ CORS: http://localhost:5173
   ]
   ```
 
+- GET /api/public/empresas/{empresaId}/empleados
+  - 200 Respuesta:
+  ```json
+  [
+    { "id": 5, "empresaId": 1, "nombre": "Ana", "apellido": "García", "rol": "ESTILISTA", "trabajaPublicamente": true, "activo": true }
+  ]
+  ```
+
 - POST /api/public/turnos
   - Body (TurnoCreateRequest):
   ```json
@@ -158,13 +166,13 @@ CORS: http://localhost:5173
 ## Empleados (por empresa)
 
 - GET /api/empresas/{empresaId}/empleados
-  - Query: activo?, page?, size?
+  - Query: activo?, visibles?, page?, size?
   - 200: Empleado[]
 
 - POST /api/empresas/{empresaId}/empleados
   - Body:
   ```json
-  { "nombre":"Ana", "apellido":"García", "rol":"ESTILISTA", "activo":true }
+  { "nombre":"Ana", "apellido":"García", "rol":"ESTILISTA", "trabajaPublicamente":true, "activo":true }
   ```
   - 200: Empleado
 
@@ -172,13 +180,13 @@ CORS: http://localhost:5173
   - 200: Empleado | 404
   - Ejemplo 200:
   ```json
-  { "id": 5, "empresaId": 1, "nombre":"Ana", "apellido":"García", "rol":"ESTILISTA", "activo": true }
+  { "id": 5, "empresaId": 1, "nombre":"Ana", "apellido":"García", "rol":"ESTILISTA", "trabajaPublicamente": true, "activo": true }
   ```
 
 - PUT /api/empresas/{empresaId}/empleados/{id}
   - Body:
   ```json
-  { "nombre":"Ana", "apellido":"G.", "rol":"ESTILISTA", "activo": true }
+  { "nombre":"Ana", "apellido":"G.", "rol":"ESTILISTA", "trabajaPublicamente": false, "activo": true }
   ```
   - 200: Empleado | 404
 
