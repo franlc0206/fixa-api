@@ -27,3 +27,6 @@ management:
     health:
       probes:
         enabled: true
+
+ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:https://tu-frontend-produccion.com}
+JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:3600000}

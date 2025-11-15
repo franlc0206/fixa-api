@@ -1,6 +1,7 @@
 package com.fixa.fixa_api.infrastructure.config;
 
 import com.fixa.fixa_api.infrastructure.security.BackofficeAccessFilter;
+import com.fixa.fixa_api.infrastructure.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -96,10 +98,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain protectedFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain protectedFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Permitir preflight CORS globalmente
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -122,8 +125,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/turnos/**").authenticated()
                         // Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
-                )
-                .httpBasic(Customizer.withDefaults());
+                );
+
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

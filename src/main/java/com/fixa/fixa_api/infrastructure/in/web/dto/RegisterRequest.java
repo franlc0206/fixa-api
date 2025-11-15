@@ -16,8 +16,6 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 6)
     private String password;
-    @NotBlank
-    private String rol; // SUPERADMIN, EMPRESA, EMPLEADO, CLIENTE
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
@@ -29,6 +27,4 @@ public class RegisterRequest {
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-    public String getRol() { return rol; }
-    public void setRol(String rol) { this.rol = rol; }
 }

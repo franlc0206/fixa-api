@@ -25,7 +25,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    public Usuario register(String nombre, String apellido, String email, String telefono, String rawPassword, String rol) {
+    public Usuario register(String nombre, String apellido, String email, String telefono, String rawPassword) {
         Optional<Usuario> existente = usuarioPort.findByEmail(email);
         if (existente.isPresent()) {
             throw new IllegalArgumentException("Email ya registrado");
@@ -36,7 +36,7 @@ public class AuthService {
         u.setApellido(apellido);
         u.setEmail(email);
         u.setTelefono(telefono);
-        u.setRol(rol);
+        u.setRol("CLIENTE");
         u.setActivo(true);
         return usuarioPort.saveWithPasswordHash(u, hash);
     }
@@ -47,5 +47,21 @@ public class AuthService {
             throw new IllegalArgumentException("Credenciales inválidas");
         }
         return usuarioPort.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado tras login"));
+    }
+
+    public Usuario loginOrRegisterGoogle(String email, String nombre, String apellido) {
+        Optional<Usuario> existente = usuarioPort.findByEmail(email);
+        if (existente.isPresent()) {
+            return existente.get();
+        }
+
+        Usuario u = new Usuario();
+        u.setNombre(nombre);
+        u.setApellido(apellido);
+        u.setEmail(email);
+        u.setTelefono(null);
+        u.setRol("CLIENTE");
+        u.setActivo(true);
+        return usuarioPort.save(u);
     }
 }
