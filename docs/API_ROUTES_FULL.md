@@ -52,6 +52,40 @@ CORS: http://localhost:5173
   ]
   ```
 
+- GET /api/public/empresas/{empresaId}/valoraciones/resumen
+  - 200 Respuesta:
+  ```json
+  {
+    "empresaId": 1,
+    "promedio": 4.5,
+    "totalValoraciones": 12,
+    "totalConResena": 9,
+    "totalSinResena": 3
+  }
+  ```
+
+- GET /api/public/empresas/{empresaId}/valoraciones
+  - Query: soloConResena?, limit? (default 20, máx. 100)
+  - 200 Respuesta:
+  ```json
+  [
+    { "id": 7, "puntuacion": 5, "resena": "Excelente atención", "fechaCreacion": "2025-10-25T12:34:00" }
+  ]
+  ```
+
+- GET /api/public/empresas/slug/{slug}
+  - 200 Respuesta: igual a `/api/public/empresas/{id}` usando slug
+
+- GET /api/public/empresas/slug/{slug}/empleados
+  - 200 Respuesta: igual a `/api/public/empresas/{empresaId}/empleados`
+
+- GET /api/public/empresas/slug/{slug}/valoraciones/resumen
+  - 200 Respuesta: igual a `/api/public/empresas/{empresaId}/valoraciones/resumen`
+
+- GET /api/public/empresas/slug/{slug}/valoraciones
+  - Query: soloConResena?, limit?
+  - 200 Respuesta: igual a `/api/public/empresas/{empresaId}/valoraciones`
+
 - POST /api/public/turnos
   - Body (TurnoCreateRequest):
   ```json
@@ -121,6 +155,23 @@ CORS: http://localhost:5173
   - 200 Respuesta:
   ```json
   [ { "id": 1, "nombre": "Mi Empresa", "activo": true, "visibilidadPublica": true } ]
+  ```
+
+- GET /api/me/turnos
+  - Query: estado?, page?, size?
+  - 200 Respuesta:
+  ```json
+  [
+    {
+      "id": 99,
+      "servicioId": 10,
+      "empleadoId": 5,
+      "empresaId": 1,
+      "fechaHoraInicio": "2025-10-25T10:00:00",
+      "fechaHoraFin": "2025-10-25T10:30:00",
+      "estado": "COMPLETADO"
+    }
+  ]
   ```
 
 ---

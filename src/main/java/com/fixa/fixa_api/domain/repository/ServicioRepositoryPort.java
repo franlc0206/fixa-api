@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface ServicioRepositoryPort {
     List<Servicio> findByEmpresaId(Long empresaId);
+    List<Servicio> findAll();
     Optional<Servicio> findById(Long id);
     Servicio save(Servicio servicio);
     void deleteById(Long id);

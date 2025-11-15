@@ -60,6 +60,7 @@ src/main/java/com/fixa/fixa_api/
 - Aprobar: PENDIENTE → CONFIRMADO.
 - Cancelar: PENDIENTE/CONFIRMADO → CANCELADO (opcional motivo).
 - Completar: CONFIRMADO → COMPLETADO.
+- Cliente autenticado puede consultar su historial mediante `GET /api/me/turnos` (opcional `estado`, `page`, `size`).
 
 ## Estándares de errores
 

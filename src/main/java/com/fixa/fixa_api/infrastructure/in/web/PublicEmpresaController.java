@@ -4,14 +4,22 @@ import com.fixa.fixa_api.application.service.DisponibilidadService;
 import com.fixa.fixa_api.application.service.EmpresaService;
 import com.fixa.fixa_api.application.service.EmpleadoService;
 import com.fixa.fixa_api.application.service.ServicioService;
+import com.fixa.fixa_api.application.service.ValoracionService;
+import com.fixa.fixa_api.application.service.RankingEmpresaService;
 import com.fixa.fixa_api.domain.model.Disponibilidad;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Empleado;
 import com.fixa.fixa_api.domain.model.Servicio;
+import com.fixa.fixa_api.domain.model.Valoracion;
+import com.fixa.fixa_api.domain.model.ValoracionResumen;
+import com.fixa.fixa_api.infrastructure.in.web.dto.EmpresaDestacadaResponse;
+import com.fixa.fixa_api.infrastructure.in.web.dto.ValoracionPublicaResponse;
+import com.fixa.fixa_api.infrastructure.in.web.dto.ValoracionResumenResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/public/empresas")
@@ -21,12 +29,21 @@ public class PublicEmpresaController {
     private final ServicioService servicioService;
     private final EmpleadoService empleadoService;
     private final DisponibilidadService disponibilidadService;
+    private final ValoracionService valoracionService;
+    private final RankingEmpresaService rankingEmpresaService;
 
-    public PublicEmpresaController(EmpresaService empresaService, ServicioService servicioService, EmpleadoService empleadoService, DisponibilidadService disponibilidadService) {
+    public PublicEmpresaController(EmpresaService empresaService,
+                                   ServicioService servicioService,
+                                   EmpleadoService empleadoService,
+                                   DisponibilidadService disponibilidadService,
+                                   ValoracionService valoracionService,
+                                   RankingEmpresaService rankingEmpresaService) {
         this.empresaService = empresaService;
         this.servicioService = servicioService;
         this.empleadoService = empleadoService;
         this.disponibilidadService = disponibilidadService;
+        this.valoracionService = valoracionService;
+        this.rankingEmpresaService = rankingEmpresaService;
     }
 
     // Catálogo público: solo empresas visibles
@@ -38,6 +55,21 @@ public class PublicEmpresaController {
     ) {
         List<Empresa> result = empresaService.listarConFiltrosPaginado(true, null, categoriaId, page, size);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/destacadas")
+    public ResponseEntity<List<EmpresaDestacadaResponse>> listarEmpresasDestacadas(
+            @RequestParam(value = "categoriaId", required = false) Long categoriaId,
+            @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        List<RankingEmpresaService.EmpresaDestacada> ranking =
+                rankingEmpresaService.listarEmpresasDestacadas(categoriaId, limit);
+
+        List<EmpresaDestacadaResponse> response = ranking.stream()
+                .map(EmpresaDestacadaResponse::fromDomain)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
 
     // Servicios públicos por empresa (por defecto solo activos)
@@ -102,6 +134,56 @@ public class PublicEmpresaController {
                 .map(empresa -> {
                     List<Empleado> empleados = empleadoService.listarPublicosPorEmpresa(empresa.getId());
                     return ResponseEntity.ok(empleados);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{empresaId}/valoraciones/resumen")
+    public ResponseEntity<ValoracionResumenResponse> obtenerResumenValoraciones(@PathVariable Long empresaId) {
+        return empresaService.obtener(empresaId)
+                .map(empresa -> {
+                    ValoracionResumen resumen = valoracionService.obtenerResumenValoracionesPorEmpresa(empresaId);
+                    return ResponseEntity.ok(ValoracionResumenResponse.fromDomain(resumen));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{empresaId}/valoraciones")
+    public ResponseEntity<List<ValoracionPublicaResponse>> listarValoracionesPublicas(@PathVariable Long empresaId,
+                                                                                      @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
+                                                                                      @RequestParam(value = "limit", required = false) Integer limit) {
+        return empresaService.obtener(empresaId)
+                .map(empresa -> {
+                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresaId, soloConResena, limit);
+                    List<ValoracionPublicaResponse> respuesta = valoraciones.stream()
+                            .map(ValoracionPublicaResponse::fromDomain)
+                            .collect(Collectors.toList());
+                    return ResponseEntity.ok(respuesta);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/slug/{slug}/valoraciones/resumen")
+    public ResponseEntity<ValoracionResumenResponse> obtenerResumenValoracionesPorSlug(@PathVariable String slug) {
+        return empresaService.obtenerPorSlug(slug)
+                .map(empresa -> {
+                    ValoracionResumen resumen = valoracionService.obtenerResumenValoracionesPorEmpresa(empresa.getId());
+                    return ResponseEntity.ok(ValoracionResumenResponse.fromDomain(resumen));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/slug/{slug}/valoraciones")
+    public ResponseEntity<List<ValoracionPublicaResponse>> listarValoracionesPublicasPorSlug(@PathVariable String slug,
+                                                                                             @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
+                                                                                             @RequestParam(value = "limit", required = false) Integer limit) {
+        return empresaService.obtenerPorSlug(slug)
+                .map(empresa -> {
+                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresa.getId(), soloConResena, limit);
+                    List<ValoracionPublicaResponse> respuesta = valoraciones.stream()
+                            .map(ValoracionPublicaResponse::fromDomain)
+                            .collect(Collectors.toList());
+                    return ResponseEntity.ok(respuesta);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

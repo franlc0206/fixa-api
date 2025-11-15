@@ -5,8 +5,10 @@ import com.fixa.fixa_api.application.usecase.CrearTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CrearVerificacionUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.domain.model.VerificacionTelefono;
+import com.fixa.fixa_api.domain.repository.UsuarioRepositoryPort;
 import com.fixa.fixa_api.infrastructure.in.web.dto.TurnoCreateRequest;
 import com.fixa.fixa_api.infrastructure.in.web.dto.TurnoPublicoResponse;
+import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,14 +24,20 @@ public class PublicTurnoController {
     private final CrearTurnoUseCase crearTurnoUseCase;
     private final CrearVerificacionUseCase crearVerificacionUseCase;
     private final TurnoQueryService turnoQueryService;
+    private final CurrentUserService currentUserService;
+    private final UsuarioRepositoryPort usuarioRepositoryPort;
 
     public PublicTurnoController(
             CrearTurnoUseCase crearTurnoUseCase,
             CrearVerificacionUseCase crearVerificacionUseCase,
-            TurnoQueryService turnoQueryService) {
+            TurnoQueryService turnoQueryService,
+            CurrentUserService currentUserService,
+            UsuarioRepositoryPort usuarioRepositoryPort) {
         this.crearTurnoUseCase = crearTurnoUseCase;
         this.crearVerificacionUseCase = crearVerificacionUseCase;
         this.turnoQueryService = turnoQueryService;
+        this.currentUserService = currentUserService;
+        this.usuarioRepositoryPort = usuarioRepositoryPort;
     }
 
     /**
@@ -76,6 +84,17 @@ public class PublicTurnoController {
         t.setClienteEmail(req.getClienteEmail());
         t.setFechaHoraInicio(req.getFechaHoraInicio());
         t.setObservaciones(req.getObservaciones());
+
+        currentUserService.getCurrentUserId().ifPresent(usuarioId -> {
+            t.setClienteId(usuarioId);
+        });
+
+        if (t.getClienteId() == null) {
+            if (req.getClienteEmail() != null && !req.getClienteEmail().isBlank()) {
+                usuarioRepositoryPort.findByEmail(req.getClienteEmail().trim().toLowerCase())
+                        .ifPresent(usuario -> t.setClienteId(usuario.getId()));
+            }
+        }
         
         Turno creado = crearTurnoUseCase.ejecutar(t);
         

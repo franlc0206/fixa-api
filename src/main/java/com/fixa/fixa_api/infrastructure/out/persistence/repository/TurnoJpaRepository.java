@@ -9,4 +9,5 @@ import java.util.List;
 public interface TurnoJpaRepository extends JpaRepository<TurnoEntity, Long> {
     List<TurnoEntity> findByEmpleado_IdAndFechaHoraInicioBetween(Long empleadoId, LocalDateTime desde, LocalDateTime hasta);
     List<TurnoEntity> findByEmpresa_IdAndFechaHoraInicioBetween(Long empresaId, LocalDateTime desde, LocalDateTime hasta);
+    List<TurnoEntity> findByCliente_IdOrderByFechaHoraInicioDesc(Long clienteId);
 }

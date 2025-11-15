@@ -36,6 +36,13 @@ public class ServicioRepositoryAdapter implements ServicioRepositoryPort {
                 .collect(Collectors.toList());
     }
 
+     @Override
+    public List<Servicio> findAll() {
+        return servicioRepo.findAll().stream()
+                .map(ServicioMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
     @Override
     public Optional<Servicio> findById(Long id) {
         return servicioRepo.findById(id).map(ServicioMapper::toDomain);

@@ -12,6 +12,26 @@ Base URL (local): `http://localhost:8080`
   - Query params: `categoriaId`, `page`, `size`
   - Devuelve empresas visibles
 
+- GET `/api/public/empresas/destacadas`
+  - Query params: `categoriaId?`, `limit?` (default=10, máx. 50)
+  - Devuelve empresas visibles y públicas ordenadas por score de valoración (promedio + cantidad de valoraciones)
+  - Respuesta 200 (ejemplo):
+    ```json
+    [
+      {
+        "id": 1,
+        "nombre": "Peluquería Moderna",
+        "slug": "peluqueria-moderna",
+        "descripcion": "Los mejores cortes",
+        "telefono": "+54 11 1234-5678",
+        "email": "contacto@peluqueria.com",
+        "categoriaId": 2,
+        "promedioValoracion": 4.7,
+        "totalValoraciones": 32
+      }
+    ]
+    ```
+
 - GET `/api/public/empresas/{id}`
   - Respuesta 200: Detalle de empresa pública (banner/SEO)
 
@@ -23,8 +43,54 @@ Base URL (local): `http://localhost:8080`
   - Respuesta 200: Lista de empleados públicos de la empresa
   - Solo retorna empleados con `trabajaPublicamente = true` y `activo = true`
 
+- GET `/api/public/empresas/slug/{slug}/valoraciones/resumen`
+  - Igual a la versión por ID pero resolviendo empresa por slug
+
+- GET `/api/public/empresas/slug/{slug}/valoraciones`
+  - Query params: `soloConResena` (default=false), `limit` (default=20, máx. 100)
+  - Lista de valoraciones activas ordenadas por fecha (más recientes primero)
+
 - GET `/api/public/empresas/{empresaId}/servicios`
   - Query params: `soloActivos` (default=true), `page`, `size`
+
+- GET `/api/public/empresas/{empresaId}/valoraciones/resumen`
+  - Respuesta 200: Promedio (1 decimal), totales y métricas básicas
+  - Respuesta 404: Empresa no encontrada o no visible
+
+- GET `/api/public/empresas/{empresaId}/valoraciones`
+  - Query params: `soloConResena` (default=false), `limit` (default=20, máx. 100)
+  - Respuesta 200: Lista de valoraciones activas (puntuación, reseña, fecha)
+  - Respuesta 404: Empresa no encontrada o no visible
+
+- GET `/api/public/categorias`
+  - Query params: `tipo` (opcional, ej. `empresa` o `servicio`)
+  - Devuelve categorías activas para poblar el Home y selects del Front
+  - Respuesta 200 (ejemplo):
+    ```json
+    [
+      { "id": 2, "nombre": "Peluquerías", "slug": "peluquerias", "tipo": "empresa", "icono": null }
+    ]
+    ```
+
+- GET `/api/public/servicios/recomendados`
+  - Query params: `categoriaId?`, `limit?` (default=10, máx. 50)
+  - Devuelve servicios recomendados ordenados por score de valoración (promedio + cantidad de valoraciones)
+  - Respuesta 200 (ejemplo):
+    ```json
+    [
+      {
+        "id": 10,
+        "empresaId": 1,
+        "empresaNombre": "Peluquería Moderna",
+        "nombre": "Corte clásico",
+        "descripcion": "Con navaja",
+        "duracionMinutos": 30,
+        "precio": 1200.0,
+        "promedioValoracion": 4.7,
+        "totalValoraciones": 32
+      }
+    ]
+    ```
 
 - POST `/api/public/turnos`
   - Body: TurnoCreateRequest (datos de cliente anónimo y turno)
@@ -213,6 +279,15 @@ Base URL (local): `http://localhost:8080`
   - Body opcional: `{ motivo }`
 
 - POST `/api/turnos/{id}/completar`
+## Perfil del Usuario (`/api/me`)
+
+- GET `/api/me/empresas`
+  - Devuelve las empresas asociadas al usuario autenticado
+
+- GET `/api/me/turnos`
+  - Query params: `estado`, `page`, `size`
+  - Devuelve los turnos del usuario autenticado ordenados por fecha (más recientes primero)
+  - Cada elemento incluye, además de los datos del turno, el flag `yaValorado: true|false` para indicar si el turno ya tiene una valoración registrada
 
 ---
 

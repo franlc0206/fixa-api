@@ -118,6 +118,14 @@ Alinear al equipo Frontend (React + Vite) y Backend (Java Spring Boot) sobre la 
 #### `GET /api/empresas/{slug}`
 - Response: empresa detallada + servicios[] + empleados_publicos[] + horarios_base
 
+#### `GET /api/empresas/{slug}/valoraciones`
+- Query params: `soloConResena` (default=false), `limit` (default=20)
+- Response: valoraciones activas ordenadas por fecha (puntuación + reseña opcional)
+
+#### `GET /api/empresas/{slug}/valoraciones/resumen`
+- Response: `{ promedio, totalValoraciones, totalConResena, totalSinResena }`
+- Usa escala 0-5 con un decimal para UI estilo marketplace
+
 #### `GET /api/empresas/{slug}/servicios`
 - Response: servicios con duración, precio, visibilidad
 

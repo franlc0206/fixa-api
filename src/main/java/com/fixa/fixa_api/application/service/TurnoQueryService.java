@@ -55,4 +55,27 @@ public class TurnoQueryService {
     public java.util.Optional<Turno> obtener(Long id) {
         return turnoPort.findById(id);
     }
+
+    public List<Turno> listarPorCliente(Long clienteId,
+                                        String estado,
+                                        Integer page,
+                                        Integer size) {
+        if (clienteId == null) {
+            return List.of();
+        }
+
+        List<Turno> turnos = turnoPort.findByClienteId(clienteId);
+
+        List<Turno> filtrado = turnos.stream()
+                .filter(t -> estado == null || (t.getEstado() != null && t.getEstado().equalsIgnoreCase(estado)))
+                .collect(Collectors.toList());
+
+        if (page == null || size == null || page < 0 || size <= 0) {
+            return filtrado;
+        }
+
+        int fromIdx = Math.min(page * size, filtrado.size());
+        int toIdx = Math.min(fromIdx + size, filtrado.size());
+        return filtrado.subList(fromIdx, toIdx);
+    }
 }

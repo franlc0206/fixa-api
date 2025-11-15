@@ -61,4 +61,12 @@ public class TurnoRepositoryAdapter implements TurnoRepositoryPort {
         return turnoRepo.findByEmpresa_IdAndFechaHoraInicioBetween(empresaId, desde, hasta)
                 .stream().map(TurnoMapper::toDomain).collect(Collectors.toList());
     }
+
+    @Override
+    public List<Turno> findByClienteId(Long clienteId) {
+        return turnoRepo.findByCliente_IdOrderByFechaHoraInicioDesc(clienteId)
+                .stream()
+                .map(TurnoMapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }
