@@ -5,8 +5,6 @@ import com.fixa.fixa_api.infrastructure.in.web.dto.UploadB2UrlResponse;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.out.storage.BackblazeB2Client;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -29,9 +27,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/uploads")
 public class UploadController {
-
-    private static final Logger logger = LoggerFactory.getLogger(UploadController.class);
-
     private final BackblazeB2Client backblazeB2Client;
 
     public UploadController(BackblazeB2Client backblazeB2Client) {
@@ -60,11 +55,6 @@ public class UploadController {
             @RequestParam(value = "empleadoId", required = false) Long empleadoId,
             @RequestParam(value = "servicioId", required = false) Long servicioId
     ) {
-        logger.info("[UploadController] Iniciando upload B2: tipo={}, empresaId={}, empleadoId={}, servicioId={}, nombre={}, size={} bytes",
-                tipo, empresaId, empleadoId, servicioId,
-                file != null ? file.getOriginalFilename() : null,
-                file != null ? file.getSize() : null);
-
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "file requerido");
         }
@@ -86,7 +76,6 @@ public class UploadController {
         req.setFileExtension(extension);
 
         String fileName = buildFileName(req);
-        logger.info("[UploadController] Nombre final del archivo para B2: {} (extension={})", fileName, extension);
         BackblazeB2Client.B2UploadAuthorization auth = backblazeB2Client.getUploadAuthorization();
 
         try {
@@ -107,12 +96,9 @@ public class UploadController {
             );
 
             if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
-                logger.error("[UploadController] Subida a B2 fallo. Status={}, body={}",
-                        uploadResponse.getStatusCode(), uploadResponse.getBody());
                 throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo subir archivo a B2");
             }
         } catch (IOException | RestClientException ex) {
-            logger.error("[UploadController] Error de comunicacion con Backblaze B2", ex);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error de comunicacion con Backblaze B2");
         }
 
