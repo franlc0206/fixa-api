@@ -24,6 +24,7 @@ public class ServicioRequest {
     private boolean requiereSena;
     private boolean activo = true;
     private Long categoriaId; // opcional
+    private String fotoUrl;
 
     public Long getEmpresaId() { return empresaId; }
     public void setEmpresaId(Long empresaId) { this.empresaId = empresaId; }
@@ -43,4 +44,6 @@ public class ServicioRequest {
     public void setActivo(boolean activo) { this.activo = activo; }
     public Long getCategoriaId() { return categoriaId; }
     public void setCategoriaId(Long categoriaId) { this.categoriaId = categoriaId; }
+    public String getFotoUrl() { return fotoUrl; }
+    public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
 }

@@ -13,6 +13,7 @@ public class EmpleadoRequest {
     private String apellido;
     
     private String rol;
+    private String fotoUrl;
     private boolean trabajaPublicamente = true;
     private boolean activo = true;
 
@@ -24,6 +25,8 @@ public class EmpleadoRequest {
     public void setApellido(String apellido) { this.apellido = apellido; }
     public String getRol() { return rol; }
     public void setRol(String rol) { this.rol = rol; }
+    public String getFotoUrl() { return fotoUrl; }
+    public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
     public boolean isTrabajaPublicamente() { return trabajaPublicamente; }
     public void setTrabajaPublicamente(boolean trabajaPublicamente) { this.trabajaPublicamente = trabajaPublicamente; }
     public boolean isActivo() { return activo; }

@@ -44,6 +44,7 @@ public class ServicioController {
         d.setRequiereSena(req.isRequiereSena());
         d.setActivo(req.isActivo());
         d.setCategoriaId(req.getCategoriaId());
+        d.setFotoUrl(req.getFotoUrl());
         return ResponseEntity.ok(servicioService.guardar(d));
     }
 
@@ -66,6 +67,7 @@ public class ServicioController {
             d.setRequiereSena(req.isRequiereSena());
             d.setActivo(req.isActivo());
             d.setCategoriaId(req.getCategoriaId());
+            d.setFotoUrl(req.getFotoUrl());
             return ResponseEntity.ok(servicioService.guardar(d));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -103,6 +105,7 @@ public class ServicioController {
                     d.setRequiereSena(req.isRequiereSena());
                     d.setActivo(req.isActivo());
                     d.setCategoriaId(req.getCategoriaId());
+                    d.setFotoUrl(req.getFotoUrl());
                     return ResponseEntity.ok(servicioService.guardar(d));
                 })
                 .orElse(ResponseEntity.notFound().build());

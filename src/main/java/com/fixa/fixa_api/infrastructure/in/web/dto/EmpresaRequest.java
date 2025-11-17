@@ -11,6 +11,7 @@ public class EmpresaRequest {
     private String telefono;
     @Email
     private String email;
+    private String bannerUrl;
     private Long categoriaId; // opcional
     private boolean permiteReservasSinUsuario;
     private boolean requiereValidacionTelefono;
@@ -29,6 +30,8 @@ public class EmpresaRequest {
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getBannerUrl() { return bannerUrl; }
+    public void setBannerUrl(String bannerUrl) { this.bannerUrl = bannerUrl; }
     public Long getCategoriaId() { return categoriaId; }
     public void setCategoriaId(Long categoriaId) { this.categoriaId = categoriaId; }
     public boolean isPermiteReservasSinUsuario() { return permiteReservasSinUsuario; }

@@ -15,4 +15,5 @@ public class Servicio {
     private boolean requiereSena;
     private boolean activo;
     private Long categoriaId; // opcional
+    private String fotoUrl;
 }

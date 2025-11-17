@@ -43,4 +43,7 @@ public class ServicioEntity {
     private boolean requiereSena;
 
     private boolean activo;
+
+    @Column(name = "foto_url", length = 500)
+    private String fotoUrl;
 }

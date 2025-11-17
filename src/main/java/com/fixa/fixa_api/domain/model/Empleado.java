@@ -10,6 +10,7 @@ public class Empleado {
     private String nombre;
     private String apellido;
     private String rol; // peluquero, colorista, etc.
+    private String fotoUrl;
     private boolean trabajaPublicamente;
     private boolean activo;
 }

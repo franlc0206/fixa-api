@@ -68,6 +68,7 @@ public class EmpresaController {
         d.setDireccion(req.getDireccion());
         d.setTelefono(req.getTelefono());
         d.setEmail(req.getEmail());
+        d.setBannerUrl(req.getBannerUrl());
         d.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
         d.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
         d.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());

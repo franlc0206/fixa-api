@@ -17,6 +17,7 @@ public class EmpresaMapper {
         d.setDireccion(e.getDireccion());
         d.setTelefono(e.getTelefono());
         d.setEmail(e.getEmail());
+        d.setBannerUrl(e.getBannerUrl());
         d.setCategoriaId(e.getCategoria() != null ? e.getCategoria().getId() : null);
         d.setPermiteReservasSinUsuario(e.isPermiteReservasSinUsuario());
         d.setRequiereValidacionTelefono(e.isRequiereValidacionTelefono());
@@ -34,6 +35,7 @@ public class EmpresaMapper {
         e.setDireccion(d.getDireccion());
         e.setTelefono(d.getTelefono());
         e.setEmail(d.getEmail());
+        e.setBannerUrl(d.getBannerUrl());
         e.setPermiteReservasSinUsuario(d.isPermiteReservasSinUsuario());
         e.setRequiereValidacionTelefono(d.isRequiereValidacionTelefono());
         e.setRequiereAprobacionTurno(d.isRequiereAprobacionTurno());

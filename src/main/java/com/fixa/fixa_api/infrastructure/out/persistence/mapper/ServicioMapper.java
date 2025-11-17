@@ -20,6 +20,7 @@ public class ServicioMapper {
         d.setRequiereSena(e.isRequiereSena());
         d.setActivo(e.isActivo());
         d.setCategoriaId(e.getCategoria() != null ? e.getCategoria().getId() : null);
+        d.setFotoUrl(e.getFotoUrl());
         return d;
     }
 
@@ -34,5 +35,6 @@ public class ServicioMapper {
         e.setRequiereSena(d.isRequiereSena());
         e.setActivo(d.isActivo());
         e.setCategoria(categoria);
+        e.setFotoUrl(d.getFotoUrl());
     }
 }

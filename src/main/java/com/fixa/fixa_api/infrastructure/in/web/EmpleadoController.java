@@ -40,6 +40,7 @@ public class EmpleadoController {
         d.setNombre(req.getNombre());
         d.setApellido(req.getApellido());
         d.setRol(req.getRol());
+        d.setFotoUrl(req.getFotoUrl());
         d.setTrabajaPublicamente(req.isTrabajaPublicamente());
         d.setActivo(req.isActivo());
         return ResponseEntity.ok(empleadoService.guardar(d));
@@ -59,6 +60,7 @@ public class EmpleadoController {
             d.setNombre(req.getNombre());
             d.setApellido(req.getApellido());
             d.setRol(req.getRol());
+            d.setFotoUrl(req.getFotoUrl());
             d.setTrabajaPublicamente(req.isTrabajaPublicamente());
             d.setActivo(req.isActivo());
             return ResponseEntity.ok(empleadoService.guardar(d));
@@ -87,6 +89,7 @@ public class EmpleadoController {
                     d.setNombre(req.getNombre());
                     d.setApellido(req.getApellido());
                     d.setRol(req.getRol());
+                    d.setFotoUrl(req.getFotoUrl());
                     d.setTrabajaPublicamente(req.isTrabajaPublicamente());
                     d.setActivo(req.isActivo());
                     return ResponseEntity.ok(empleadoService.guardar(d));
