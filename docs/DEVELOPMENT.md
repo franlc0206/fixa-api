@@ -79,6 +79,43 @@ src/main/java/com/fixa/fixa_api/
 
 - `SecurityConfig` básico para MVP. Endurecer en fases siguientes.
 
+### Modelo de Roles y permisos
+
+- **Rol global (`Usuario.rol`)**
+  - Valores esperados: `SUPERADMIN`, `CLIENTE` (históricamente `EMPRESA`, `EMPLEADO`, pero se recomienda no usarlos para nuevas features).
+  - Se mapea a authorities Spring:
+    - `SUPERADMIN` → `ROLE_SUPERADMIN`.
+    - Cualquier otro → `ROLE_CLIENTE`.
+  - Uso principal:
+    - `SUPERADMIN` puede acceder a `/api/superadmin/**` y crear/editar empresas globalmente.
+    - `CLIENTE` (incluye usuarios de backoffice) se combina con el rol por empresa.
+
+- **Rol por empresa (`UsuarioEmpresa.rolEmpresa`)**
+  - Representa el rol del usuario dentro de una empresa concreta (multi-tenant).
+  - Valores recomendados: `OWNER`, `MANAGER`, `STAFF`.
+    - `OWNER`: dueño/administrador principal de la empresa.
+    - `MANAGER`: gestiona agenda, empleados y servicios, pero no necesariamente operaciones globales.
+    - `STAFF`: empleado operativo (acceso limitado a agenda/turnos y datos básicos).
+  - Autorización típica en servicios de backoffice:
+    - Se valida primero pertenencia: `usuarioEmpresaPort.existsByUsuarioAndEmpresa(usuarioId, empresaId)`.
+    - A futuro se puede refinar según `rolEmpresa` (ej: solo `OWNER`/`MANAGER` pueden crear empleados/servicios).
+
+- **Patrones de autorización sugeridos (guía)**
+  - Endpoints `superadmin`:
+    - Siempre requerir `hasRole("SUPERADMIN")` y operar a nivel global.
+  - Endpoints de backoffice por empresa (`/api/empresas/{empresaId}/...`):
+    - Validar autenticación (JWT) + pertenencia a la empresa vía `UsuarioEmpresa`.
+    - Si se necesita granularidad adicional:
+      - **Lectura** de agenda/turnos/empleados: `OWNER`/`MANAGER`/`STAFF`.
+      - **Alta/edición** de empleados/servicios/disponibilidad: `OWNER`/`MANAGER`.
+      - **Configuración crítica** (ej: borrar empresa, cambiar flags sensibles): solo `OWNER` o `SUPERADMIN`.
+
+- **Buenas prácticas**
+  - No exponer cambios de `Usuario.rol` en endpoints públicos.
+  - Gestionar `UsuarioEmpresa.rolEmpresa` solo desde flujos de backoffice/superadmin.
+  - Documentar siempre en los nuevos endpoints:
+    - Qué rol global y qué rol por empresa se requiere para usarlos.
+
 ## Commits y PRs
 
 - **Conventional Commits**.

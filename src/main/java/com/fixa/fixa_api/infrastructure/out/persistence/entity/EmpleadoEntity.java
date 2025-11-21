@@ -26,6 +26,9 @@ public class EmpleadoEntity {
     @Column(length = 100)
     private String apellido;
 
+    @Column(length = 150)
+    private String email;
+
     @Column(length = 100)
     private String rol; // peluquero, colorista, etc.
 

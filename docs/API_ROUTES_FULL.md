@@ -17,6 +17,16 @@ CORS: http://localhost:5173
   ]
   ```
 
+- PUT /api/me/email
+  - Body:
+  ```json
+  { "nuevoEmail": "nuevo@mail.com", "password": "password_actual" }
+  ```
+  - 204 Respuesta sin contenido.
+  - Efecto:
+    - Actualiza el email del usuario autenticado.
+    - Desvincula empleados asociados y elimina relaciones Usuario↔Empresa, por lo que el usuario pierde acceso de backoffice a esas empresas.
+
 - GET /api/public/empresas/{id}
   - 200 Respuesta (detalle):
   ```json
@@ -41,6 +51,44 @@ CORS: http://localhost:5173
   ```json
   [
     { "id": 10, "empresaId": 1, "nombre": "Corte", "descripcion": "", "duracionMinutos": 30, "requiereEspacioLibre": false, "costo": 1000, "requiereSena": false, "activo": true, "categoriaId": 2 }
+  ]
+  ```
+
+- GET /api/public/servicios
+  - Query: categoriaId?, page? (default 0), size? (default 20, máx. 50)
+  - 200 Respuesta (lista ordenada por score de recomendación: promedio de valoración + cantidad de valoraciones):
+  ```json
+  [
+    {
+      "id": 10,
+      "empresaId": 1,
+      "empresaNombre": "Peluquería Moderna",
+      "nombre": "Corte clásico",
+      "descripcion": "Con navaja",
+      "duracionMinutos": 30,
+      "precio": 1200.0,
+      "promedioValoracion": 4.7,
+      "totalValoraciones": 32
+    }
+  ]
+  ```
+
+- GET /api/public/servicios/recomendados
+  - Query: categoriaId?, limit? (default 10, máx. 50)
+  - 200 Respuesta (top N recomendados con el mismo formato que `/api/public/servicios`):
+  ```json
+  [
+    {
+      "id": 10,
+      "empresaId": 1,
+      "empresaNombre": "Peluquería Moderna",
+      "nombre": "Corte clásico",
+      "descripcion": "Con navaja",
+      "duracionMinutos": 30,
+      "precio": 1200.0,
+      "promedioValoracion": 4.7,
+      "totalValoraciones": 32
+    }
   ]
   ```
 
@@ -132,9 +180,11 @@ CORS: http://localhost:5173
 - POST /api/auth/register
   - Body:
   ```json
-  { "nombre":"Admin", "apellido":"User", "email":"admin@fixa.local", "telefono":"000000", "password":"admin123", "rol":"SUPERADMIN" }
+  { "nombre":"Juan", "apellido":"Pérez", "email":"juan@example.com", "telefono":"000000", "password":"secreto123" }
   ```
   - 200 Respuesta: Usuario
+  - Notas:
+    - El registro público crea siempre usuarios con rol lógico `CLIENTE`.
 
 - POST /api/auth/login
   - Body:
@@ -143,9 +193,16 @@ CORS: http://localhost:5173
   ```
   - 200 Respuesta:
   ```json
-  { "id": 1, "email":"admin@fixa.local", "rol":"SUPERADMIN" }
+  { "id": 1, "email":"admin@fixa.local", "rol":"SUPERADMIN", "accessToken": "<jwt>" }
   ```
-  - Usar Basic Auth en siguientes requests
+  - Usar `Authorization: Bearer <accessToken>` en siguientes requests.
+
+- POST /api/auth/google
+  - Body:
+  ```json
+  { "idToken": "<id_token_de_google>" }
+  ```
+  - 200 Respuesta: igual que `/api/auth/login`.
 
 ---
 

@@ -3,16 +3,21 @@ package com.fixa.fixa_api.infrastructure.in.web;
 import com.fixa.fixa_api.application.service.UsuarioEmpresaQueryService;
 import com.fixa.fixa_api.application.service.TurnoQueryService;
 import com.fixa.fixa_api.application.service.ValoracionService;
+import com.fixa.fixa_api.application.service.AuthService;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.infrastructure.in.web.dto.TurnoMeResponse;
+import com.fixa.fixa_api.infrastructure.in.web.dto.ChangeEmailRequest;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
@@ -27,15 +32,18 @@ public class MeController {
     private final TurnoQueryService turnoQueryService;
     private final CurrentUserService currentUserService;
     private final ValoracionService valoracionService;
+    private final AuthService authService;
 
     public MeController(UsuarioEmpresaQueryService ueQueryService,
                         TurnoQueryService turnoQueryService,
                         CurrentUserService currentUserService,
-                        ValoracionService valoracionService) {
+                        ValoracionService valoracionService,
+                        AuthService authService) {
         this.ueQueryService = ueQueryService;
         this.turnoQueryService = turnoQueryService;
         this.currentUserService = currentUserService;
         this.valoracionService = valoracionService;
+        this.authService = authService;
     }
 
     @GetMapping("/empresas")
@@ -62,5 +70,15 @@ public class MeController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(respuesta);
+    }
+
+    @PutMapping("/email")
+    public ResponseEntity<Void> cambiarMiEmail(@Valid @RequestBody ChangeEmailRequest request) {
+        Long usuarioId = currentUserService.getCurrentUserId()
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
+
+        authService.cambiarEmail(usuarioId, request.getPassword(), request.getNuevoEmail());
+
+        return ResponseEntity.noContent().build();
     }
 }

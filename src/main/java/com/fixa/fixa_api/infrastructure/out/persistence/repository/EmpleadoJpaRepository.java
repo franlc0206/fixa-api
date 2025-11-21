@@ -8,4 +8,6 @@ import java.util.List;
 public interface EmpleadoJpaRepository extends JpaRepository<EmpleadoEntity, Long> {
     List<EmpleadoEntity> findByEmpresa_Id(Long empresaId);
     List<EmpleadoEntity> findByEmpresa_IdAndTrabajaPublicamenteTrueAndActivoTrue(Long empresaId);
+    List<EmpleadoEntity> findByEmailAndUsuarioIsNullAndActivoTrue(String email);
+    List<EmpleadoEntity> findByUsuario_Id(Long usuarioId);
 }

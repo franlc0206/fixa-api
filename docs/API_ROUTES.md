@@ -10,7 +10,9 @@ Base URL (local): `http://localhost:8080`
 
 - GET `/api/public/empresas`
   - Query params: `categoriaId`, `page`, `size`
-  - Devuelve empresas visibles
+  - Devuelve empresas visibles y activas.
+  - Si se envía `categoriaId`, filtra empresas que tengan al menos **un servicio activo** con esa categoría
+    (una empresa puede pertenecer a múltiples categorías según los servicios que ofrece).
 
 - GET `/api/public/empresas/destacadas`
   - Query params: `categoriaId?`, `limit?` (default=10, máx. 50)
@@ -69,6 +71,28 @@ Base URL (local): `http://localhost:8080`
     ```json
     [
       { "id": 2, "nombre": "Peluquerías", "slug": "peluquerias", "tipo": "empresa", "icono": null }
+    ]
+    ```
+
+- GET `/api/public/servicios`
+  - Query params: `categoriaId?`, `page?` (default=0), `size?` (default=20, máx. 50)
+  - Devuelve servicios públicos ordenados por score de recomendación (promedio de valoración + cantidad de valoraciones),
+    ideal para el Home tipo "PedidosYa de servicios".
+  - Solo incluye servicios activos de empresas con `visibilidadPublica = true` y `activo = true`.
+  - Respuesta 200 (ejemplo):
+    ```json
+    [
+      {
+        "id": 10,
+        "empresaId": 1,
+        "empresaNombre": "Peluquería Moderna",
+        "nombre": "Corte clásico",
+        "descripcion": "Con navaja",
+        "duracionMinutos": 30,
+        "precio": 1200.0,
+        "promedioValoracion": 4.7,
+        "totalValoraciones": 32
+      }
     ]
     ```
 
@@ -157,12 +181,17 @@ Base URL (local): `http://localhost:8080`
 ## Auth
 
 - POST `/api/auth/register`
-  - Body: `{ nombre, apellido, email, telefono, password, rol }`
+  - Body: `{ nombre, apellido, email, telefono, password }`
+  - Comportamiento: crea siempre un usuario con rol lógico `CLIENTE`.
 
 - POST `/api/auth/login`
   - Body: `{ email, password }`
-  - Respuesta: `{ id, email, rol }`
-  - Para llamadas protegidas usar Basic Auth (Authorization: Basic base64(email:password))
+  - Respuesta: `{ id, email, rol, accessToken }`
+  - Para llamadas protegidas usar `Authorization: Bearer <accessToken>`.
+
+- POST `/api/auth/google`
+  - Body: `{ idToken }`
+  - Respuesta: igual que `/api/auth/login` (si el email no existe crea un usuario con rol `CLIENTE`).
 
 ---
 
@@ -235,7 +264,7 @@ Base URL (local): `http://localhost:8080`
   - Query params: `activo`, `page`, `size`
 
 - POST `/api/empresas/{empresaId}/empleados`
-  - Body: EmpleadoRequest (ahora incluye campo `trabajaPublicamente`)
+  - Body: EmpleadoRequest (`nombre`, `apellido`, `email?`, `rol`, `fotoUrl?`, `trabajaPublicamente`, `activo`)
 
 - GET `/api/empresas/{empresaId}/empleados/{id}`
   - Respuesta 200: `Empleado` | `404`
@@ -289,6 +318,11 @@ Base URL (local): `http://localhost:8080`
   - Devuelve los turnos del usuario autenticado ordenados por fecha (más recientes primero)
   - Cada elemento incluye, además de los datos del turno, el flag `yaValorado: true|false` para indicar si el turno ya tiene una valoración registrada
 
+- PUT `/api/me/email`
+  - Body: `{ "nuevoEmail": "nuevo@mail.com", "password": "password_actual" }`
+  - Cambia el email del usuario autenticado.
+  - Efecto: invalida sus relaciones Usuario↔Empresa y desvincula empleados asociados, por lo que pierde acceso de backoffice a esas empresas.
+
 ---
 
 ## Salud
@@ -299,8 +333,10 @@ Base URL (local): `http://localhost:8080`
 
 ## Seguridad y CORS
 
-- Autenticación: HTTP Basic (Fase 1)
-  - Backoffice protegido por roles: SUPERADMIN, EMPRESA, EMPLEADO (según recurso)
+- Autenticación: JWT Bearer (fase 1 completada)
+  - Login vía `/api/auth/login` o `/api/auth/google`, que devuelven `accessToken`.
+  - Endpoints protegidos usan `Authorization: Bearer <accessToken>`.
+  - Backoffice y superadmin se protegen combinando el rol global (`SUPERADMIN`) y la pertenencia a empresas (`UsuarioEmpresa`).
 - CORS permitido para Front local: `http://localhost:5173`
   - Métodos: GET, POST, PUT, PATCH, DELETE, OPTIONS
   - Headers: Authorization, Content-Type, Accept, Origin
@@ -451,5 +487,5 @@ Objetivo: el Frontend no debe tipear IDs/FKs manualmente. Debe poblar selects co
 Notas importantes para payloads:
 - `EmpresaRequest.categoriaId`: obtener de `valuelist/categorias`.
 - `ServicioRequest.categoriaId` (si aplica): obtener de `valuelist/categorias`.
-- `Relaciones.rolEmpresa`: usar opciones de UI predefinidas (OWNER/ADMIN/EMPLEADO), no enviar textos libres.
+- `Relaciones.rolEmpresa`: usar opciones de UI predefinidas (`OWNER`/`MANAGER`/`STAFF`), no enviar textos libres.
 - Estados de turno: consumir `GET /api/turnos/estados` (si se publica) para filtros.

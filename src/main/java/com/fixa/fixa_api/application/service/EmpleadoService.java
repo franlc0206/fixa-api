@@ -3,6 +3,8 @@ package com.fixa.fixa_api.application.service;
 import com.fixa.fixa_api.domain.model.Empleado;
 import com.fixa.fixa_api.domain.repository.EmpleadoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.UsuarioEmpresaRepositoryPort;
+import com.fixa.fixa_api.domain.repository.UsuarioRepositoryPort;
+import com.fixa.fixa_api.domain.model.UsuarioEmpresa;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import org.springframework.http.HttpStatus;
@@ -18,13 +20,16 @@ public class EmpleadoService {
     private final EmpleadoRepositoryPort empleadoPort;
     private final UsuarioEmpresaRepositoryPort usuarioEmpresaPort;
     private final CurrentUserService currentUserService;
+    private final UsuarioRepositoryPort usuarioPort;
 
     public EmpleadoService(EmpleadoRepositoryPort empleadoPort,
                            UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
-                           CurrentUserService currentUserService) {
+                           CurrentUserService currentUserService,
+                           UsuarioRepositoryPort usuarioPort) {
         this.empleadoPort = empleadoPort;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
         this.currentUserService = currentUserService;
+        this.usuarioPort = usuarioPort;
     }
 
     public List<Empleado> listarPorEmpresa(Long empresaId) {
@@ -62,6 +67,23 @@ public class EmpleadoService {
     public Empleado guardar(Empleado empleado) {
         if (empleado.getEmpresaId() != null) {
             validarPertenencia(empleado.getEmpresaId());
+        }
+
+        if ((empleado.getUsuarioId() == null)
+                && empleado.getEmail() != null
+                && !empleado.getEmail().isBlank()) {
+            usuarioPort.findByEmail(empleado.getEmail()).ifPresent(u -> {
+                empleado.setUsuarioId(u.getId());
+                if (empleado.getEmpresaId() != null
+                        && !usuarioEmpresaPort.existsByUsuarioAndEmpresa(u.getId(), empleado.getEmpresaId())) {
+                    UsuarioEmpresa rel = new UsuarioEmpresa();
+                    rel.setUsuarioId(u.getId());
+                    rel.setEmpresaId(empleado.getEmpresaId());
+                    rel.setRolEmpresa("STAFF");
+                    rel.setActivo(true);
+                    usuarioEmpresaPort.save(rel);
+                }
+            });
         }
         return empleadoPort.save(empleado);
     }

@@ -9,6 +9,7 @@ public class Empleado {
     private Long usuarioId; // opcional
     private String nombre;
     private String apellido;
+    private String email;
     private String rol; // peluquero, colorista, etc.
     private String fotoUrl;
     private boolean trabajaPublicamente;

@@ -21,6 +21,42 @@ public class PublicServicioController {
         this.recomendacionService = recomendacionService;
     }
 
+    @GetMapping
+    public ResponseEntity<List<ServicioRecomendadoResponse>> listarServiciosHome(
+            @RequestParam(value = "categoriaId", required = false) Long categoriaId,
+            @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
+            @RequestParam(value = "size", required = false, defaultValue = "20") Integer size
+    ) {
+        if (page == null || page < 0) {
+            page = 0;
+        }
+        if (size == null || size <= 0) {
+            size = 20;
+        }
+        if (size > 50) {
+            size = 50;
+        }
+
+        List<RecomendacionService.ServicioRecomendado> ranking =
+                recomendacionService.obtenerRankingServicios(categoriaId);
+
+        if (ranking.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        int from = Math.max(0, page * size);
+        if (from >= ranking.size()) {
+            return ResponseEntity.ok(List.of());
+        }
+        int to = Math.min(from + size, ranking.size());
+
+        List<ServicioRecomendadoResponse> response = ranking.subList(from, to).stream()
+                .map(ServicioRecomendadoResponse::fromDomain)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/recomendados")
     public ResponseEntity<List<ServicioRecomendadoResponse>> listarRecomendados(
             @RequestParam(value = "categoriaId", required = false) Long categoriaId,

@@ -53,7 +53,7 @@ public class PublicEmpresaController {
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size
     ) {
-        List<Empresa> result = empresaService.listarConFiltrosPaginado(true, null, categoriaId, page, size);
+        List<Empresa> result = empresaService.listarPublicasPorCategoriaServicioPaginado(categoriaId, page, size);
         return ResponseEntity.ok(result);
     }
 

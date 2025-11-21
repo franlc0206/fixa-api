@@ -71,4 +71,20 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
     public boolean existsById(Long id) {
         return empleadoRepo.existsById(id);
     }
+
+    @Override
+    public List<Empleado> findActivosSinUsuarioPorEmail(String email) {
+        return empleadoRepo.findByEmailAndUsuarioIsNullAndActivoTrue(email)
+                .stream()
+                .map(EmpleadoMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Empleado> findByUsuarioId(Long usuarioId) {
+        return empleadoRepo.findByUsuario_Id(usuarioId)
+                .stream()
+                .map(EmpleadoMapper::toDomain)
+                .collect(Collectors.toList());
+    }
 }

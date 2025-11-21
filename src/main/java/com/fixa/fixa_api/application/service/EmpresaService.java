@@ -1,7 +1,9 @@
 package com.fixa.fixa_api.application.service;
 
 import com.fixa.fixa_api.domain.model.Empresa;
+import com.fixa.fixa_api.domain.model.Servicio;
 import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
+import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,9 +14,11 @@ import java.util.stream.Collectors;
 public class EmpresaService {
 
     private final EmpresaRepositoryPort empresaPort;
+    private final ServicioRepositoryPort servicioPort;
 
-    public EmpresaService(EmpresaRepositoryPort empresaPort) {
+    public EmpresaService(EmpresaRepositoryPort empresaPort, ServicioRepositoryPort servicioPort) {
         this.empresaPort = empresaPort;
+        this.servicioPort = servicioPort;
     }
 
     public List<Empresa> listar(Boolean visibles) {
@@ -31,6 +35,42 @@ public class EmpresaService {
 
     public List<Empresa> listarConFiltrosPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page, Integer size) {
         List<Empresa> filtrado = listarConFiltros(visibles, activo, categoriaId);
+        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        int from = Math.min(page * size, filtrado.size());
+        int to = Math.min(from + size, filtrado.size());
+        return filtrado.subList(from, to);
+    }
+
+    public List<Empresa> listarPublicasPorCategoriaServicioPaginado(Long categoriaServicioId, Integer page, Integer size) {
+        List<Empresa> visibles = listar(true).stream()
+                .filter(Empresa::isActivo)
+                .collect(Collectors.toList());
+
+        if (categoriaServicioId == null) {
+            if (page == null || size == null || page < 0 || size <= 0) return visibles;
+            int from = Math.min(page * size, visibles.size());
+            int to = Math.min(from + size, visibles.size());
+            return visibles.subList(from, to);
+        }
+
+        List<Servicio> servicios = servicioPort.findAll().stream()
+                .filter(Servicio::isActivo)
+                .filter(s -> s.getCategoriaId() != null && s.getCategoriaId().equals(categoriaServicioId))
+                .collect(Collectors.toList());
+
+        if (servicios.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.Set<Long> empresaIds = servicios.stream()
+                .map(Servicio::getEmpresaId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<Empresa> filtrado = visibles.stream()
+                .filter(e -> empresaIds.contains(e.getId()))
+                .collect(Collectors.toList());
+
         if (page == null || size == null || page < 0 || size <= 0) return filtrado;
         int from = Math.min(page * size, filtrado.size());
         int to = Math.min(from + size, filtrado.size());

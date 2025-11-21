@@ -39,6 +39,7 @@ public class EmpleadoController {
         d.setEmpresaId(empresaId);
         d.setNombre(req.getNombre());
         d.setApellido(req.getApellido());
+        d.setEmail(req.getEmail());
         d.setRol(req.getRol());
         d.setFotoUrl(req.getFotoUrl());
         d.setTrabajaPublicamente(req.isTrabajaPublicamente());
@@ -59,6 +60,7 @@ public class EmpleadoController {
             d.setEmpresaId(req.getEmpresaId());
             d.setNombre(req.getNombre());
             d.setApellido(req.getApellido());
+            d.setEmail(req.getEmail());
             d.setRol(req.getRol());
             d.setFotoUrl(req.getFotoUrl());
             d.setTrabajaPublicamente(req.isTrabajaPublicamente());
@@ -88,6 +90,7 @@ public class EmpleadoController {
                     d.setEmpresaId(empresaId); // se toma del path para evitar tampering
                     d.setNombre(req.getNombre());
                     d.setApellido(req.getApellido());
+                    d.setEmail(req.getEmail());
                     d.setRol(req.getRol());
                     d.setFotoUrl(req.getFotoUrl());
                     d.setTrabajaPublicamente(req.isTrabajaPublicamente());

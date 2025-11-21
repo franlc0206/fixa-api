@@ -12,4 +12,6 @@ public interface EmpleadoRepositoryPort {
     Empleado save(Empleado empleado);
     void deleteById(Long id);
     boolean existsById(Long id);
+    List<Empleado> findActivosSinUsuarioPorEmail(String email);
+    List<Empleado> findByUsuarioId(Long usuarioId);
 }

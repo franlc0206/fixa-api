@@ -14,6 +14,7 @@ public class EmpleadoMapper {
         d.setUsuarioId(e.getUsuario() != null ? e.getUsuario().getId() : null);
         d.setNombre(e.getNombre());
         d.setApellido(e.getApellido());
+        d.setEmail(e.getEmail());
         d.setRol(e.getRol());
         d.setFotoUrl(e.getFotoUrl());
         d.setTrabajaPublicamente(e.isTrabajaPublicamente());
@@ -26,6 +27,7 @@ public class EmpleadoMapper {
         e.setUsuario(usuario);
         e.setNombre(d.getNombre());
         e.setApellido(d.getApellido());
+        e.setEmail(d.getEmail());
         e.setRol(d.getRol());
         e.setFotoUrl(d.getFotoUrl());
         e.setTrabajaPublicamente(d.isTrabajaPublicamente());
