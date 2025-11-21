@@ -69,6 +69,33 @@ public class EmpleadoService {
             validarPertenencia(empleado.getEmpresaId());
         }
 
+        // Si es un update, revisar si cambió el email para limpiar relaciones antiguas
+        if (empleado.getId() != null) {
+            empleadoPort.findById(empleado.getId()).ifPresent(existing -> {
+                String oldEmail = existing.getEmail();
+                String newEmail = empleado.getEmail();
+
+                boolean emailChanged = (oldEmail == null && newEmail != null)
+                        || (oldEmail != null && (newEmail == null || !oldEmail.equalsIgnoreCase(newEmail)));
+
+                if (emailChanged && existing.getUsuarioId() != null && existing.getEmpresaId() != null) {
+                    Long oldUsuarioId = existing.getUsuarioId();
+                    Long empresaId = existing.getEmpresaId();
+
+                    // El usuario con el email anterior ya no debería tener relación con la empresa
+                    usuarioEmpresaPort.deleteByUsuarioAndEmpresa(oldUsuarioId, empresaId);
+
+                    // Desvincular usuario del empleado editado; se volverá a vincular si corresponde con el nuevo email
+                    empleado.setUsuarioId(null);
+                } else {
+                    // Si no cambió el email, preservar el usuarioId existente si no fue seteado explícitamente
+                    if (empleado.getUsuarioId() == null) {
+                        empleado.setUsuarioId(existing.getUsuarioId());
+                    }
+                }
+            });
+        }
+
         if ((empleado.getUsuarioId() == null)
                 && empleado.getEmail() != null
                 && !empleado.getEmail().isBlank()) {
