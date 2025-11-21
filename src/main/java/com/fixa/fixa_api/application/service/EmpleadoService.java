@@ -83,7 +83,13 @@ public class EmpleadoService {
                     Long empresaId = existing.getEmpresaId();
 
                     // El usuario con el email anterior ya no debería tener relación con la empresa
-                    usuarioEmpresaPort.deleteByUsuarioAndEmpresa(oldUsuarioId, empresaId);
+                    usuarioEmpresaPort.findByUsuarioAndEmpresa(oldUsuarioId, empresaId)
+                            .ifPresent(rel -> {
+                                String rol = rel.getRolEmpresa();
+                                if (rol == null || "STAFF".equalsIgnoreCase(rol)) {
+                                    usuarioEmpresaPort.deleteByUsuarioAndEmpresa(oldUsuarioId, empresaId);
+                                }
+                            });
 
                     // Desvincular usuario del empleado editado; se volverá a vincular si corresponde con el nuevo email
                     empleado.setUsuarioId(null);

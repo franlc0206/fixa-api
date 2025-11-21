@@ -19,6 +19,9 @@ public class SuperAdminRelacionService {
         public Long empresaId;
         public String rolEmpresa;
         public boolean activo;
+        public String usuarioEmail;
+        public String usuarioNombre;
+        public String empresaNombre;
         public static RelacionDTO of(UsuarioEmpresa d){
             RelacionDTO r = new RelacionDTO();
             r.usuarioId = d.getUsuarioId();
@@ -50,11 +53,19 @@ public class SuperAdminRelacionService {
     }
 
     public List<RelacionDTO> listByUsuario(Long usuarioId){
-        return uePort.findByUsuario(usuarioId).stream().map(RelacionDTO::of).collect(Collectors.toList());
+        List<RelacionDTO> items = uePort.findByUsuario(usuarioId).stream()
+                .map(RelacionDTO::of)
+                .collect(Collectors.toList());
+        enrich(items);
+        return items;
     }
 
     public List<RelacionDTO> listByEmpresa(Long empresaId){
-        return uePort.findByEmpresa(empresaId).stream().map(RelacionDTO::of).collect(Collectors.toList());
+        List<RelacionDTO> items = uePort.findByEmpresa(empresaId).stream()
+                .map(RelacionDTO::of)
+                .collect(Collectors.toList());
+        enrich(items);
+        return items;
     }
 
     public PageResponse<RelacionDTO> listAllPaged(int page, int size){
@@ -62,6 +73,7 @@ public class SuperAdminRelacionService {
         int from = Math.max(0, page * size);
         int to = Math.min(all.size(), from + size);
         List<RelacionDTO> slice = from >= all.size() ? List.of() : all.subList(from, to);
+        enrich(slice);
         PageResponse<RelacionDTO> resp = new PageResponse<>();
         resp.content = slice;
         resp.page = page;
@@ -81,7 +93,9 @@ public class SuperAdminRelacionService {
         d.setEmpresaId(req.empresaId);
         d.setRolEmpresa(req.rolEmpresa);
         d.setActivo(req.activo);
-        return RelacionDTO.of(uePort.save(d));
+        RelacionDTO resp = RelacionDTO.of(uePort.save(d));
+        enrich(resp);
+        return resp;
     }
 
     public void remove(Long usuarioId, Long empresaId){
@@ -99,5 +113,31 @@ public class SuperAdminRelacionService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Relación no encontrada"));
         rel.setActivo(activo);
         uePort.save(rel);
+    }
+
+    private void enrich(List<RelacionDTO> items) {
+        for (RelacionDTO r : items) {
+            enrich(r);
+        }
+    }
+
+    private void enrich(RelacionDTO r) {
+        if (r == null) return;
+
+        if (r.usuarioId != null) {
+            usuarioPort.findById(r.usuarioId).ifPresent(u -> {
+                r.usuarioEmail = u.getEmail();
+                String nombre = u.getNombre() != null ? u.getNombre() : "";
+                String apellido = u.getApellido() != null ? u.getApellido() : "";
+                String fullName = (nombre + " " + apellido).trim();
+                r.usuarioNombre = fullName.isEmpty() ? null : fullName;
+            });
+        }
+
+        if (r.empresaId != null) {
+            empresaPort.findById(r.empresaId).ifPresent(e -> {
+                r.empresaNombre = e.getNombre();
+            });
+        }
     }
 }

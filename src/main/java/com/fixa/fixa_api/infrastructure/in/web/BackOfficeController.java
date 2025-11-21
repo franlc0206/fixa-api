@@ -10,6 +10,7 @@ import com.fixa.fixa_api.domain.model.Servicio;
 import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.domain.repository.UsuarioEmpresaRepositoryPort;
 import com.fixa.fixa_api.infrastructure.in.web.dto.CalendarioEventoDTO;
+import com.fixa.fixa_api.infrastructure.in.web.dto.EmpresaRequest;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -68,6 +69,43 @@ public class BackOfficeController {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
 
         return ResponseEntity.ok(empresa);
+    }
+
+    @PutMapping("/empresa")
+    public ResponseEntity<Empresa> actualizarEmpresaActiva(@RequestBody EmpresaRequest req) {
+        Long userId = currentUserService.getCurrentUserId()
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
+
+        var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
+
+        var primeraEmpresaActiva = usuarioEmpresas.stream()
+                .filter(ue -> ue.isActivo())
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas"));
+
+        Long empresaId = primeraEmpresaActiva.getEmpresaId();
+
+        empresaService.obtener(empresaId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
+
+        Empresa d = new Empresa();
+        d.setId(empresaId);
+        d.setNombre(req.getNombre());
+        d.setDescripcion(req.getDescripcion());
+        d.setDireccion(req.getDireccion());
+        d.setTelefono(req.getTelefono());
+        d.setEmail(req.getEmail());
+        d.setBannerUrl(req.getBannerUrl());
+        d.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
+        d.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
+        d.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());
+        d.setMensajeValidacionPersonalizado(req.getMensajeValidacionPersonalizado());
+        d.setVisibilidadPublica(req.isVisibilidadPublica());
+        d.setActivo(req.isActivo());
+        d.setCategoriaId(req.getCategoriaId());
+
+        Empresa saved = empresaService.guardar(d);
+        return ResponseEntity.ok(saved);
     }
 
     /**
