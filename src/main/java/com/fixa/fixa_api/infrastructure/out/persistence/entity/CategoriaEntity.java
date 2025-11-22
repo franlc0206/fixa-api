@@ -20,5 +20,8 @@ public class CategoriaEntity {
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
+    @Column(length = 50)
+    private String icono;
+
     private boolean activo;
 }

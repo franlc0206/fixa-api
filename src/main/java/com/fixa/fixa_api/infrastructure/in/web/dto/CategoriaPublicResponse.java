@@ -20,7 +20,7 @@ public class CategoriaPublicResponse {
             slug = categoria.getId() != null ? "categoria-" + categoria.getId() : null;
         }
         dto.setSlug(slug);
-        dto.setIcono(null);
+        dto.setIcono(categoria.getIcono());
         return dto;
     }
 

@@ -22,22 +22,24 @@ public class SuperAdminCategoriaService {
         return categoriaPort.findAll();
     }
 
-    public Categoria create(String tipo, String nombre, String descripcion, boolean activo) {
+    public Categoria create(String tipo, String nombre, String descripcion, String icono, boolean activo) {
         if (tipo == null || tipo.isBlank()) throw new ApiException(HttpStatus.BAD_REQUEST, "tipo requerido");
         if (nombre == null || nombre.isBlank()) throw new ApiException(HttpStatus.BAD_REQUEST, "nombre requerido");
         Categoria c = new Categoria();
         c.setTipo(tipo);
         c.setNombre(nombre);
         c.setDescripcion(descripcion);
+        c.setIcono(icono);
         c.setActivo(activo);
         return categoriaPort.save(c);
     }
 
-    public Optional<Categoria> update(Long id, String tipo, String nombre, String descripcion, Boolean activo) {
+    public Optional<Categoria> update(Long id, String tipo, String nombre, String descripcion, String icono, Boolean activo) {
         return categoriaPort.findById(id).map(c -> {
             if (tipo != null) c.setTipo(tipo);
             if (nombre != null) c.setNombre(nombre);
             if (descripcion != null) c.setDescripcion(descripcion);
+            if (icono != null) c.setIcono(icono);
             if (activo != null) c.setActivo(activo);
             return categoriaPort.save(c);
         });

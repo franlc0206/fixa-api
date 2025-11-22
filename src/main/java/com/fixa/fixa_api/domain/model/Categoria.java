@@ -8,5 +8,6 @@ public class Categoria {
     private String tipo; // empresa | servicio
     private String nombre;
     private String descripcion;
+    private String icono;
     private boolean activo;
 }

@@ -13,6 +13,7 @@ public final class CategoriaMapper {
         d.setTipo(e.getTipo());
         d.setNombre(e.getNombre());
         d.setDescripcion(e.getDescripcion());
+        d.setIcono(e.getIcono());
         d.setActivo(e.isActivo());
         return d;
     }
@@ -23,6 +24,7 @@ public final class CategoriaMapper {
         e.setTipo(d.getTipo());
         e.setNombre(d.getNombre());
         e.setDescripcion(d.getDescripcion());
+        e.setIcono(d.getIcono());
         e.setActivo(d.isActivo());
         return e;
     }
