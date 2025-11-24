@@ -59,7 +59,7 @@ public class BackOfficeController {
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
 
         var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
-        
+
         var primeraEmpresaActiva = usuarioEmpresas.stream()
                 .filter(ue -> ue.isActivo())
                 .findFirst()
@@ -113,10 +113,12 @@ public class BackOfficeController {
      * Obtiene los turnos de la empresa en formato compatible con FullCalendar.
      * 
      * Query params:
-     * - desde: Fecha/hora inicio (ISO 8601, opcional, default: inicio del mes actual)
+     * - desde: Fecha/hora inicio (ISO 8601, opcional, default: inicio del mes
+     * actual)
      * - hasta: Fecha/hora fin (ISO 8601, opcional, default: fin del mes actual)
      * - empleadoId: Filtrar por empleado (opcional)
-     * - estados: Lista de estados a incluir separados por coma (opcional, ej: "CONFIRMADO,PENDIENTE")
+     * - estados: Lista de estados a incluir separados por coma (opcional, ej:
+     * "CONFIRMADO,PENDIENTE")
      * 
      * @return Lista de eventos en formato FullCalendar
      */
@@ -125,7 +127,6 @@ public class BackOfficeController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
             @RequestParam(required = false) Long empleadoId,
-            @RequestParam(required = false) Long empresaId,
             @RequestParam(required = false) String estados) {
 
         System.out.println("========================================");
@@ -134,7 +135,6 @@ public class BackOfficeController {
         System.out.println("  - desde: " + desde);
         System.out.println("  - hasta: " + hasta);
         System.out.println("  - empleadoId: " + empleadoId);
-        System.out.println("  - empresaId: " + empresaId);
         System.out.println("  - estados: " + estados);
 
         // Obtener empresa del usuario autenticado
@@ -150,27 +150,16 @@ public class BackOfficeController {
         var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
         System.out.println(" [CALENDARIO CONTROLLER] Empresas del usuario: " + usuarioEmpresas.size());
 
-        Long empresaIdSeleccionada;
-        if (empresaId != null) {
-            System.out.println(" [CALENDARIO CONTROLLER] empresaId recibido en request: " + empresaId);
-            var ueOpt = usuarioEmpresaPort.findByUsuarioAndEmpresa(userId, empresaId);
-            var empresaSeleccionada = ueOpt
-                    .filter(ue -> ue.isActivo())
-                    .orElseThrow(() -> {
-                        System.out.println(" [CALENDARIO CONTROLLER] Usuario sin acceso activo a la empresa " + empresaId);
-                        return new ApiException(HttpStatus.FORBIDDEN, "No tienes acceso a esta empresa");
-                    });
-            empresaIdSeleccionada = empresaSeleccionada.getEmpresaId();
-        } else {
-            var primeraEmpresaActiva = usuarioEmpresas.stream()
-                    .filter(ue -> ue.isActivo())
-                    .findFirst()
-                    .orElseThrow(() -> {
-                        System.out.println(" [CALENDARIO CONTROLLER] Usuario sin empresa activa");
-                        return new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas");
-                    });
-            empresaIdSeleccionada = primeraEmpresaActiva.getEmpresaId();
-        }
+        // Ya no aceptamos empresaId por parámetro. Buscamos la primera activa.
+        var primeraEmpresaActiva = usuarioEmpresas.stream()
+                .filter(ue -> ue.isActivo())
+                .findFirst()
+                .orElseThrow(() -> {
+                    System.out.println(" [CALENDARIO CONTROLLER] Usuario sin empresa activa");
+                    return new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas");
+                });
+
+        Long empresaIdSeleccionada = primeraEmpresaActiva.getEmpresaId();
 
         System.out.println(" [CALENDARIO CONTROLLER] Empresa ID seleccionada: " + empresaIdSeleccionada);
 
@@ -206,7 +195,7 @@ public class BackOfficeController {
      */
     private CalendarioEventoDTO mapearTurnoAEvento(Turno turno) {
         CalendarioEventoDTO evento = new CalendarioEventoDTO();
-        
+
         // Campos básicos
         evento.setId(turno.getId());
         evento.setStart(turno.getFechaHoraInicio().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -215,8 +204,8 @@ public class BackOfficeController {
         evento.setAllDay(false);
 
         // Nombre del cliente y título
-        String nombreCliente = (turno.getClienteNombre() != null ? turno.getClienteNombre() : "") + 
-                              (turno.getClienteApellido() != null ? " " + turno.getClienteApellido() : "");
+        String nombreCliente = (turno.getClienteNombre() != null ? turno.getClienteNombre() : "") +
+                (turno.getClienteApellido() != null ? " " + turno.getClienteApellido() : "");
         evento.setClienteNombre(nombreCliente.trim());
         evento.setClienteTelefono(turno.getClienteTelefono());
 
