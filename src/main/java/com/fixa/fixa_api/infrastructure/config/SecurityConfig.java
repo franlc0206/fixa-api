@@ -1,6 +1,7 @@
 package com.fixa.fixa_api.infrastructure.config;
 
 import com.fixa.fixa_api.infrastructure.security.BackofficeAccessFilter;
+import com.fixa.fixa_api.infrastructure.security.JwtAuthenticationEntryPoint;
 import com.fixa.fixa_api.infrastructure.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -45,7 +46,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
@@ -91,18 +93,21 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().permitAll()
-                );
+                        .anyRequest().permitAll());
         return http.build();
     }
 
     @Bean
     @Order(2)
-    public SecurityFilterChain protectedFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain protectedFilterChain(HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         // Permitir preflight CORS globalmente
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -119,13 +124,12 @@ public class SecurityConfig {
                                 "/api/empresas/**",
                                 "/api/empleados/**",
                                 "/api/servicios/**",
-                                "/api/disponibilidad/**"
-                        ).authenticated()
+                                "/api/disponibilidad/**")
+                        .authenticated()
                         // Turnos
                         .requestMatchers("/api/turnos/**").authenticated()
                         // Todo lo demás requiere autenticación
-                        .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
