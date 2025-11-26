@@ -9,5 +9,6 @@ public class Categoria {
     private String nombre;
     private String descripcion;
     private String icono;
+    private String fotoDefault;
     private boolean activo;
 }

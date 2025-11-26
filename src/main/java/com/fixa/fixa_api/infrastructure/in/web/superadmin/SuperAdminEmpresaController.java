@@ -44,6 +44,8 @@ public class SuperAdminEmpresaController {
         d.setDireccion(req.getDireccion());
         d.setTelefono(req.getTelefono());
         d.setEmail(req.getEmail());
+        d.setBannerUrl(req.getBannerUrl());
+        d.setLogoUrl(req.getLogoUrl());
         d.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
         d.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
         d.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());

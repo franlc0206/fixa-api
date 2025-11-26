@@ -20,7 +20,7 @@ public class RankingEmpresaService {
     private final ValoracionRepositoryPort valoracionPort;
 
     public RankingEmpresaService(EmpresaRepositoryPort empresaPort,
-                                 ValoracionRepositoryPort valoracionPort) {
+            ValoracionRepositoryPort valoracionPort) {
         this.empresaPort = empresaPort;
         this.valoracionPort = valoracionPort;
     }
@@ -33,6 +33,7 @@ public class RankingEmpresaService {
         private String descripcion;
         private String telefono;
         private String email;
+        private String logoUrl;
         private Long categoriaId;
         private double promedioValoracion;
         private long totalValoraciones;
@@ -47,14 +48,16 @@ public class RankingEmpresaService {
         List<EmpresaDestacada> ranking = visibles.stream()
                 .filter(Empresa::isActivo)
                 .filter(Empresa::isVisibilidadPublica)
-                .filter(e -> categoriaId == null || (e.getCategoriaId() != null && e.getCategoriaId().equals(categoriaId)))
+                .filter(e -> categoriaId == null
+                        || (e.getCategoriaId() != null && e.getCategoriaId().equals(categoriaId)))
                 .map(empresa -> {
                     Optional<ValoracionResumen> resumenOpt = valoracionPort.obtenerResumenPorEmpresa(empresa.getId());
                     double promedio = resumenOpt.map(ValoracionResumen::getPromedio).orElse(0.0);
                     long total = resumenOpt.map(ValoracionResumen::getTotalValoraciones).orElse(0L);
 
                     if (total <= 0) {
-                        // Empresas sin valoraciones quedan con score 0 (se pueden filtrar después si se desea)
+                        // Empresas sin valoraciones quedan con score 0 (se pueden filtrar después si se
+                        // desea)
                     }
 
                     EmpresaDestacada dto = new EmpresaDestacada();
@@ -64,6 +67,7 @@ public class RankingEmpresaService {
                     dto.setDescripcion(empresa.getDescripcion());
                     dto.setTelefono(empresa.getTelefono());
                     dto.setEmail(empresa.getEmail());
+                    dto.setLogoUrl(empresa.getLogoUrl());
                     dto.setCategoriaId(empresa.getCategoriaId());
                     dto.setPromedioValoracion(promedio);
                     dto.setTotalValoraciones(total);
@@ -79,7 +83,8 @@ public class RankingEmpresaService {
     }
 
     private double calcularScoreEmpresa(double promedio, long totalValoraciones) {
-        if (totalValoraciones <= 0) return 0.0;
+        if (totalValoraciones <= 0)
+            return 0.0;
         double factorCantidad = Math.log10(totalValoraciones + 1); // prioriza empresas con más valoraciones
         return promedio * factorCantidad;
     }

@@ -5,27 +5,62 @@ import jakarta.validation.constraints.NotBlank;
 public class UploadB2UrlRequest {
 
     @NotBlank
-    private String tipo; // EMPRESA_BANNER, EMPLEADO_FOTO, SERVICIO_FOTO
+    private String tipo; // EMPRESA_BANNER, EMPLEADO_FOTO, SERVICIO_FOTO, EMPRESA_LOGO,
+                         // CATEGORIA_FOTO_DEFAULT
 
     private Long empresaId;
     private Long empleadoId;
     private Long servicioId;
+    private Long categoriaId;
 
     @NotBlank
     private String fileExtension; // jpg, png, etc.
 
-    public String getTipo() { return tipo; }
-    public void setTipo(String tipo) { this.tipo = tipo; }
+    public String getTipo() {
+        return tipo;
+    }
 
-    public Long getEmpresaId() { return empresaId; }
-    public void setEmpresaId(Long empresaId) { this.empresaId = empresaId; }
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
 
-    public Long getEmpleadoId() { return empleadoId; }
-    public void setEmpleadoId(Long empleadoId) { this.empleadoId = empleadoId; }
+    public Long getEmpresaId() {
+        return empresaId;
+    }
 
-    public Long getServicioId() { return servicioId; }
-    public void setServicioId(Long servicioId) { this.servicioId = servicioId; }
+    public void setEmpresaId(Long empresaId) {
+        this.empresaId = empresaId;
+    }
 
-    public String getFileExtension() { return fileExtension; }
-    public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
+    public Long getEmpleadoId() {
+        return empleadoId;
+    }
+
+    public void setEmpleadoId(Long empleadoId) {
+        this.empleadoId = empleadoId;
+    }
+
+    public Long getServicioId() {
+        return servicioId;
+    }
+
+    public void setServicioId(Long servicioId) {
+        this.servicioId = servicioId;
+    }
+
+    public Long getCategoriaId() {
+        return categoriaId;
+    }
+
+    public void setCategoriaId(Long categoriaId) {
+        this.categoriaId = categoriaId;
+    }
+
+    public String getFileExtension() {
+        return fileExtension;
+    }
+
+    public void setFileExtension(String fileExtension) {
+        this.fileExtension = fileExtension;
+    }
 }

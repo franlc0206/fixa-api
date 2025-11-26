@@ -7,7 +7,8 @@ import com.fixa.fixa_api.infrastructure.out.persistence.entity.EmpresaEntity;
 public class EmpresaMapper {
 
     public static Empresa toDomain(EmpresaEntity e) {
-        if (e == null) return null;
+        if (e == null)
+            return null;
         Empresa d = new Empresa();
         d.setId(e.getId());
         d.setUsuarioAdminId(e.getUsuarioAdmin() != null ? e.getUsuarioAdmin().getId() : null);
@@ -18,6 +19,7 @@ public class EmpresaMapper {
         d.setTelefono(e.getTelefono());
         d.setEmail(e.getEmail());
         d.setBannerUrl(e.getBannerUrl());
+        d.setLogoUrl(e.getLogoUrl());
         d.setCategoriaId(e.getCategoria() != null ? e.getCategoria().getId() : null);
         d.setPermiteReservasSinUsuario(e.isPermiteReservasSinUsuario());
         d.setRequiereValidacionTelefono(e.isRequiereValidacionTelefono());
@@ -36,6 +38,7 @@ public class EmpresaMapper {
         e.setTelefono(d.getTelefono());
         e.setEmail(d.getEmail());
         e.setBannerUrl(d.getBannerUrl());
+        e.setLogoUrl(d.getLogoUrl());
         e.setPermiteReservasSinUsuario(d.isPermiteReservasSinUsuario());
         e.setRequiereValidacionTelefono(d.isRequiereValidacionTelefono());
         e.setRequiereAprobacionTurno(d.isRequiereAprobacionTurno());

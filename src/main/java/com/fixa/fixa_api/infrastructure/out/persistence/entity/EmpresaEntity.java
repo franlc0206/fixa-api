@@ -37,6 +37,9 @@ public class EmpresaEntity {
     @Column(name = "banner_url", length = 500)
     private String bannerUrl;
 
+    @Column(name = "logo_url", length = 500)
+    private String logoUrl;
+
     @ManyToOne
     @JoinColumn(name = "fk_categoria")
     private CategoriaEntity categoria;

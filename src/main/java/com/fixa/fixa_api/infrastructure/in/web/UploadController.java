@@ -42,8 +42,7 @@ public class UploadController {
                 auth.getUploadUrl(),
                 auth.getAuthorizationToken(),
                 fileName,
-                publicUrl
-        );
+                publicUrl);
         return ResponseEntity.ok(resp);
     }
 
@@ -53,8 +52,8 @@ public class UploadController {
             @RequestParam("tipo") String tipo,
             @RequestParam(value = "empresaId", required = false) Long empresaId,
             @RequestParam(value = "empleadoId", required = false) Long empleadoId,
-            @RequestParam(value = "servicioId", required = false) Long servicioId
-    ) {
+            @RequestParam(value = "servicioId", required = false) Long servicioId,
+            @RequestParam(value = "categoriaId", required = false) Long categoriaId) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "file requerido");
         }
@@ -73,6 +72,7 @@ public class UploadController {
         req.setEmpresaId(empresaId);
         req.setEmpleadoId(empleadoId);
         req.setServicioId(servicioId);
+        req.setCategoriaId(categoriaId);
         req.setFileExtension(extension);
 
         String fileName = buildFileName(req);
@@ -92,8 +92,7 @@ public class UploadController {
                     auth.getUploadUrl(),
                     HttpMethod.POST,
                     entity,
-                    String.class
-            );
+                    String.class);
 
             if (!uploadResponse.getStatusCode().is2xxSuccessful()) {
                 throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo subir archivo a B2");
@@ -107,8 +106,7 @@ public class UploadController {
                 auth.getUploadUrl(),
                 auth.getAuthorizationToken(),
                 fileName,
-                publicUrl
-        );
+                publicUrl);
         return ResponseEntity.ok(resp);
     }
 
@@ -135,6 +133,19 @@ public class UploadController {
                     throw new ApiException(HttpStatus.BAD_REQUEST, "servicioId requerido para tipo SERVICIO_FOTO");
                 }
                 return "servicios/" + req.getServicioId() + "-" + randomId + "." + ext;
+            }
+            case "EMPRESA_LOGO" -> {
+                if (req.getEmpresaId() == null) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "empresaId requerido para tipo EMPRESA_LOGO");
+                }
+                return "empresas/" + req.getEmpresaId() + "/logo-" + randomId + "." + ext;
+            }
+            case "CATEGORIA_FOTO_DEFAULT" -> {
+                if (req.getCategoriaId() == null) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST,
+                            "categoriaId requerido para tipo CATEGORIA_FOTO_DEFAULT");
+                }
+                return "categorias/" + req.getCategoriaId() + "/default-" + randomId + "." + ext;
             }
             default -> throw new ApiException(HttpStatus.BAD_REQUEST, "tipo invalido para upload B2");
         }

@@ -9,6 +9,7 @@ public class CategoriaPublicResponse {
     private String slug;
     private String tipo;
     private String icono;
+    private String fotoDefault;
 
     public static CategoriaPublicResponse fromDomain(Categoria categoria) {
         CategoriaPublicResponse dto = new CategoriaPublicResponse();
@@ -21,6 +22,7 @@ public class CategoriaPublicResponse {
         }
         dto.setSlug(slug);
         dto.setIcono(categoria.getIcono());
+        dto.setFotoDefault(categoria.getFotoDefault());
         return dto;
     }
 
@@ -62,5 +64,13 @@ public class CategoriaPublicResponse {
 
     public void setIcono(String icono) {
         this.icono = icono;
+    }
+
+    public String getFotoDefault() {
+        return fotoDefault;
+    }
+
+    public void setFotoDefault(String fotoDefault) {
+        this.fotoDefault = fotoDefault;
     }
 }

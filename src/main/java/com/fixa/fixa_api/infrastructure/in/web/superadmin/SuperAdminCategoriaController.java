@@ -25,16 +25,19 @@ public class SuperAdminCategoriaController {
     }
 
     public static class CreateCategoriaRequest {
-        @NotBlank public String tipo;      // empresa | servicio
-        @NotBlank public String nombre;
+        @NotBlank
+        public String tipo; // empresa | servicio
+        @NotBlank
+        public String nombre;
         public String descripcion;
         public String icono;
+        public String fotoDefault;
         public boolean activo = true;
     }
 
     @PostMapping
     public ResponseEntity<Categoria> create(@Valid @RequestBody CreateCategoriaRequest req) {
-        Categoria saved = service.create(req.tipo, req.nombre, req.descripcion, req.icono, req.activo);
+        Categoria saved = service.create(req.tipo, req.nombre, req.descripcion, req.icono, req.fotoDefault, req.activo);
         return ResponseEntity.ok(saved);
     }
 
@@ -43,12 +46,13 @@ public class SuperAdminCategoriaController {
         public String nombre;
         public String descripcion;
         public String icono;
+        public String fotoDefault;
         public Boolean activo;
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Categoria> update(@PathVariable Long id, @RequestBody UpdateCategoriaRequest req) {
-        return service.update(id, req.tipo, req.nombre, req.descripcion, req.icono, req.activo)
+        return service.update(id, req.tipo, req.nombre, req.descripcion, req.icono, req.fotoDefault, req.activo)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

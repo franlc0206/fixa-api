@@ -25,8 +25,7 @@ public class EmpresaController {
             @RequestParam(value = "activo", required = false) Boolean activo,
             @RequestParam(value = "categoriaId", required = false) Long categoriaId,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "size", required = false) Integer size
-    ) {
+            @RequestParam(value = "size", required = false) Integer size) {
         List<Empresa> result = empresaService.listarConFiltrosPaginado(visibles, activo, categoriaId, page, size);
         return ResponseEntity.ok(result);
     }
@@ -69,6 +68,7 @@ public class EmpresaController {
         d.setTelefono(req.getTelefono());
         d.setEmail(req.getEmail());
         d.setBannerUrl(req.getBannerUrl());
+        d.setLogoUrl(req.getLogoUrl());
         d.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
         d.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
         d.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());
@@ -79,4 +79,3 @@ public class EmpresaController {
         return d;
     }
 }
-

@@ -13,6 +13,7 @@ public class Empresa {
     private String telefono;
     private String email;
     private String bannerUrl;
+    private String logoUrl;
     private Long categoriaId;
     private boolean permiteReservasSinUsuario;
     private boolean requiereValidacionTelefono;

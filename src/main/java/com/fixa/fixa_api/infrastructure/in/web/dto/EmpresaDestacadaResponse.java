@@ -9,6 +9,7 @@ public class EmpresaDestacadaResponse {
     private String descripcion;
     private String telefono;
     private String email;
+    private String logoUrl;
     private Long categoriaId;
     private double promedioValoracion;
     private long totalValoraciones;
@@ -21,6 +22,7 @@ public class EmpresaDestacadaResponse {
         dto.setDescripcion(src.getDescripcion());
         dto.setTelefono(src.getTelefono());
         dto.setEmail(src.getEmail());
+        dto.setLogoUrl(src.getLogoUrl());
         dto.setCategoriaId(src.getCategoriaId());
         dto.setPromedioValoracion(src.getPromedioValoracion());
         dto.setTotalValoraciones(src.getTotalValoraciones());
@@ -73,6 +75,14 @@ public class EmpresaDestacadaResponse {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getLogoUrl() {
+        return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+        this.logoUrl = logoUrl;
     }
 
     public Long getCategoriaId() {

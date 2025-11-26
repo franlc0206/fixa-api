@@ -23,5 +23,8 @@ public class CategoriaEntity {
     @Column(length = 50)
     private String icono;
 
+    @Column(name = "foto_default", length = 500)
+    private String fotoDefault;
+
     private boolean activo;
 }
