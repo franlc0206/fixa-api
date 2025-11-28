@@ -114,22 +114,36 @@ public class BackOfficeController {
     }
 
     @GetMapping("/plan-info")
-    public ResponseEntity<PlanInfoResponse> obtenerInfoPlan() {
+    public ResponseEntity<PlanInfoResponse> obtenerInfoPlan(@RequestParam(required = false) Long empresaId) {
         Long userId = currentUserService.getCurrentUserId()
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
 
         var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
-        var primeraEmpresaActiva = usuarioEmpresas.stream()
-                .filter(ue -> ue.isActivo())
-                .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas"));
 
-        Long empresaId = primeraEmpresaActiva.getEmpresaId();
-        var plan = suscripcionService.obtenerPlanActual(empresaId);
+        Long empresaIdSeleccionada;
+
+        if (empresaId != null) {
+            boolean pertenece = usuarioEmpresas.stream()
+                    .anyMatch(ue -> ue.isActivo() && ue.getEmpresaId().equals(empresaId));
+            if (!pertenece) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "No tienes acceso a la empresa seleccionada");
+            }
+            empresaIdSeleccionada = empresaId;
+        } else {
+            var primeraEmpresaActiva = usuarioEmpresas.stream()
+                    .filter(ue -> ue.isActivo())
+                    .findFirst()
+                    .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas"));
+            empresaIdSeleccionada = primeraEmpresaActiva.getEmpresaId();
+        }
+
+        var plan = suscripcionService.obtenerPlanActual(empresaIdSeleccionada);
 
         // Calcular uso actual
-        long empleadosUsados = empleadoService.listarPorEmpresa(empresaId).stream().filter(Empleado::isActivo).count();
-        long serviciosUsados = servicioService.listarPorEmpresa(empresaId).stream().filter(Servicio::isActivo).count();
+        long empleadosUsados = empleadoService.listarPorEmpresa(empresaIdSeleccionada).stream().filter(Empleado::isActivo)
+                .count();
+        long serviciosUsados = servicioService.listarPorEmpresa(empresaIdSeleccionada).stream().filter(Servicio::isActivo)
+                .count();
 
         // TODO: Implementar conteo real de turnos mensuales. Por ahora mockeamos o
         // devolvemos 0.
