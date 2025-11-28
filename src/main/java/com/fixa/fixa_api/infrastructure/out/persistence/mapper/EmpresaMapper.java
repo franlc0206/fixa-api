@@ -27,6 +27,9 @@ public class EmpresaMapper {
         d.setMensajeValidacionPersonalizado(e.getMensajeValidacionPersonalizado());
         d.setVisibilidadPublica(e.isVisibilidadPublica());
         d.setActivo(e.isActivo());
+        if (e.getPlanActual() != null) {
+            d.setPlanActualId(e.getPlanActual().getId());
+        }
         return d;
     }
 

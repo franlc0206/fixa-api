@@ -21,4 +21,5 @@ public class Empresa {
     private String mensajeValidacionPersonalizado;
     private boolean visibilidadPublica;
     private boolean activo;
+    private Long planActualId;
 }

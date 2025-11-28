@@ -21,15 +21,18 @@ public class EmpleadoService {
     private final UsuarioEmpresaRepositoryPort usuarioEmpresaPort;
     private final CurrentUserService currentUserService;
     private final UsuarioRepositoryPort usuarioPort;
+    private final SuscripcionService suscripcionService;
 
     public EmpleadoService(EmpleadoRepositoryPort empleadoPort,
-                           UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
-                           CurrentUserService currentUserService,
-                           UsuarioRepositoryPort usuarioPort) {
+            UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
+            CurrentUserService currentUserService,
+            UsuarioRepositoryPort usuarioPort,
+            SuscripcionService suscripcionService) {
         this.empleadoPort = empleadoPort;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
         this.currentUserService = currentUserService;
         this.usuarioPort = usuarioPort;
+        this.suscripcionService = suscripcionService;
     }
 
     public List<Empleado> listarPorEmpresa(Long empresaId) {
@@ -47,14 +50,17 @@ public class EmpleadoService {
         List<Empleado> base = (visibles != null && visibles)
                 ? empleadoPort.findPublicosByEmpresaId(empresaId)
                 : empleadoPort.findByEmpresaId(empresaId);
-        if (activo == null) return base;
+        if (activo == null)
+            return base;
         return base.stream().filter(e -> e.isActivo() == activo).collect(Collectors.toList());
     }
 
-    public List<Empleado> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Boolean visibles, Integer page, Integer size) {
+    public List<Empleado> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Boolean visibles, Integer page,
+            Integer size) {
         validarPertenencia(empresaId);
         List<Empleado> filtrado = listarPorEmpresa(empresaId, activo, visibles);
-        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
         int from = Math.min(page * size, filtrado.size());
         int to = Math.min(from + size, filtrado.size());
         return filtrado.subList(from, to);
@@ -67,6 +73,21 @@ public class EmpleadoService {
     public Empleado guardar(Empleado empleado) {
         if (empleado.getEmpresaId() != null) {
             validarPertenencia(empleado.getEmpresaId());
+        }
+
+        // Validación de límites del plan (solo al crear nuevo empleado)
+        if (empleado.getId() == null && empleado.getEmpresaId() != null) {
+            var plan = suscripcionService.obtenerPlanActual(empleado.getEmpresaId());
+            long empleadosActuales = empleadoPort.findByEmpresaId(empleado.getEmpresaId()).stream()
+                    .filter(Empleado::isActivo)
+                    .count();
+
+            if (empleadosActuales >= plan.getMaxEmpleados()) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "PLAN_LIMIT_REACHED",
+                        String.format(
+                                "Has alcanzado el límite de empleados de tu plan (%d/%d). Actualiza tu plan para agregar más.",
+                                empleadosActuales, plan.getMaxEmpleados()));
+            }
         }
 
         // Si es un update, revisar si cambió el email para limpiar relaciones antiguas
@@ -91,10 +112,12 @@ public class EmpleadoService {
                                 }
                             });
 
-                    // Desvincular usuario del empleado editado; se volverá a vincular si corresponde con el nuevo email
+                    // Desvincular usuario del empleado editado; se volverá a vincular si
+                    // corresponde con el nuevo email
                     empleado.setUsuarioId(null);
                 } else {
-                    // Si no cambió el email, preservar el usuarioId existente si no fue seteado explícitamente
+                    // Si no cambió el email, preservar el usuarioId existente si no fue seteado
+                    // explícitamente
                     if (empleado.getUsuarioId() == null) {
                         empleado.setUsuarioId(existing.getUsuarioId());
                     }
@@ -123,7 +146,8 @@ public class EmpleadoService {
 
     public boolean eliminar(Long id) {
         Optional<Empleado> e = empleadoPort.findById(id);
-        if (e.isEmpty()) return false;
+        if (e.isEmpty())
+            return false;
         if (e.get().getEmpresaId() != null) {
             validarPertenencia(e.get().getEmpresaId());
         }
@@ -134,7 +158,8 @@ public class EmpleadoService {
     private void validarPertenencia(Long empresaId) {
         Long userId = currentUserService.getCurrentUserId()
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "No autenticado"));
-        // SUPERADMIN queda exento (si en el futuro agregamos verificación de rol global, se puede inyectar desde SecurityContext)
+        // SUPERADMIN queda exento (si en el futuro agregamos verificación de rol
+        // global, se puede inyectar desde SecurityContext)
         boolean pertenece = usuarioEmpresaPort.existsByUsuarioAndEmpresa(userId, empresaId);
         if (!pertenece) {
             throw new ApiException(HttpStatus.FORBIDDEN, "No pertenece a la empresa");

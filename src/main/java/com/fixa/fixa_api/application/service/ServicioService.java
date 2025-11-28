@@ -18,13 +18,16 @@ public class ServicioService {
     private final ServicioRepositoryPort servicioPort;
     private final UsuarioEmpresaRepositoryPort usuarioEmpresaPort;
     private final CurrentUserService currentUserService;
+    private final SuscripcionService suscripcionService;
 
     public ServicioService(ServicioRepositoryPort servicioPort,
-                           UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
-                           CurrentUserService currentUserService) {
+            UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
+            CurrentUserService currentUserService,
+            SuscripcionService suscripcionService) {
         this.servicioPort = servicioPort;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
         this.currentUserService = currentUserService;
+        this.suscripcionService = suscripcionService;
     }
 
     public List<Servicio> listarPorEmpresa(Long empresaId) {
@@ -35,17 +38,20 @@ public class ServicioService {
     public List<Servicio> listarPorEmpresa(Long empresaId, Boolean activo) {
         validarPertenencia(empresaId);
         List<Servicio> base = servicioPort.findByEmpresaId(empresaId);
-        if (activo == null) return base;
+        if (activo == null)
+            return base;
         return base.stream().filter(s -> s.isActivo() == activo).collect(Collectors.toList());
     }
 
     public List<Servicio> listarPorEmpresaPaginado(Long empresaId, Boolean activo, Integer page, Integer size) {
         validarPertenencia(empresaId);
         List<Servicio> filtrado = listarPorEmpresa(empresaId, activo);
-        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
         int start = page * size;
         int end = Math.min(start + size, filtrado.size());
-        if (start > filtrado.size()) return List.of();
+        if (start > filtrado.size())
+            return List.of();
         return filtrado.subList(start, end);
     }
 
@@ -57,7 +63,8 @@ public class ServicioService {
      */
     public List<Servicio> listarPorEmpresaPublico(Long empresaId, Boolean activo) {
         List<Servicio> base = servicioPort.findByEmpresaId(empresaId);
-        if (activo == null) return base;
+        if (activo == null)
+            return base;
         return base.stream().filter(s -> s.isActivo() == activo).collect(Collectors.toList());
     }
 
@@ -66,10 +73,12 @@ public class ServicioService {
      */
     public List<Servicio> listarPorEmpresaPaginadoPublico(Long empresaId, Boolean activo, Integer page, Integer size) {
         List<Servicio> filtrado = listarPorEmpresaPublico(empresaId, activo);
-        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
         int start = page * size;
         int end = Math.min(start + size, filtrado.size());
-        if (start > filtrado.size()) return List.of();
+        if (start > filtrado.size())
+            return List.of();
         return filtrado.subList(start, end);
     }
 
@@ -81,12 +90,29 @@ public class ServicioService {
         if (servicio.getEmpresaId() != null) {
             validarPertenencia(servicio.getEmpresaId());
         }
+
+        // Validación de límites del plan (solo al crear nuevo servicio)
+        if (servicio.getId() == null && servicio.getEmpresaId() != null) {
+            var plan = suscripcionService.obtenerPlanActual(servicio.getEmpresaId());
+            long serviciosActuales = servicioPort.findByEmpresaId(servicio.getEmpresaId()).stream()
+                    .filter(Servicio::isActivo)
+                    .count();
+
+            if (serviciosActuales >= plan.getMaxServicios()) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "PLAN_LIMIT_REACHED",
+                        String.format(
+                                "Has alcanzado el límite de servicios de tu plan (%d/%d). Actualiza tu plan para agregar más.",
+                                serviciosActuales, plan.getMaxServicios()));
+            }
+        }
+
         return servicioPort.save(servicio);
     }
 
     public boolean eliminar(Long id) {
         Optional<Servicio> s = servicioPort.findById(id);
-        if (s.isEmpty()) return false;
+        if (s.isEmpty())
+            return false;
         if (s.get().getEmpresaId() != null) {
             validarPertenencia(s.get().getEmpresaId());
         }

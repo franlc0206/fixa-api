@@ -4,6 +4,7 @@ import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Servicio;
 import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
+import com.fixa.fixa_api.domain.repository.SuscripcionRepositoryPort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,10 +16,14 @@ public class EmpresaService {
 
     private final EmpresaRepositoryPort empresaPort;
     private final ServicioRepositoryPort servicioPort;
+    private final SuscripcionRepositoryPort suscripcionPort;
+    private final SuscripcionService suscripcionService;
 
-    public EmpresaService(EmpresaRepositoryPort empresaPort, ServicioRepositoryPort servicioPort) {
+    public EmpresaService(EmpresaRepositoryPort empresaPort, ServicioRepositoryPort servicioPort, SuscripcionRepositoryPort suscripcionPort, SuscripcionService suscripcionService) {
         this.empresaPort = empresaPort;
         this.servicioPort = servicioPort;
+        this.suscripcionPort = suscripcionPort;
+        this.suscripcionService = suscripcionService;
     }
 
     public List<Empresa> listar(Boolean visibles) {
@@ -35,7 +40,35 @@ public class EmpresaService {
 
     public List<Empresa> listarConFiltrosPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page, Integer size) {
         List<Empresa> filtrado = listarConFiltros(visibles, activo, categoriaId);
-        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
+        int from = Math.min(page * size, filtrado.size());
+        int to = Math.min(from + size, filtrado.size());
+        return filtrado.subList(from, to);
+    }
+
+    /**
+     * Empresas públicas (visibles) y activas que además tienen una suscripción activa.
+     */
+    public List<Empresa> listarPublicasConSuscripcionActivaPaginado(Long categoriaId, Integer page, Integer size) {
+        // visibles = true, activo = true
+        List<Empresa> base = listarConFiltrosPaginado(true, true, categoriaId, page, size);
+        return base.stream()
+                .filter(e -> suscripcionPort.findActivaByEmpresaId(e.getId()).isPresent())
+                .collect(Collectors.toList());
+    }
+
+    public List<Empresa> listarPublicasConSuscripcionActiva(Boolean visibles, Boolean activo, Long categoriaId) {
+        List<Empresa> base = listarConFiltros(visibles, activo, categoriaId);
+        return base.stream()
+                .filter(e -> suscripcionPort.findActivaByEmpresaId(e.getId()).isPresent())
+                .collect(Collectors.toList());
+    }
+
+    public List<Empresa> listarPublicasConSuscripcionActivaPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page, Integer size) {
+        List<Empresa> filtrado = listarPublicasConSuscripcionActiva(visibles, activo, categoriaId);
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
         int from = Math.min(page * size, filtrado.size());
         int to = Math.min(from + size, filtrado.size());
         return filtrado.subList(from, to);
@@ -47,7 +80,8 @@ public class EmpresaService {
                 .collect(Collectors.toList());
 
         if (categoriaServicioId == null) {
-            if (page == null || size == null || page < 0 || size <= 0) return visibles;
+            if (page == null || size == null || page < 0 || size <= 0)
+                return visibles;
             int from = Math.min(page * size, visibles.size());
             int to = Math.min(from + size, visibles.size());
             return visibles.subList(from, to);
@@ -71,7 +105,8 @@ public class EmpresaService {
                 .filter(e -> empresaIds.contains(e.getId()))
                 .collect(Collectors.toList());
 
-        if (page == null || size == null || page < 0 || size <= 0) return filtrado;
+        if (page == null || size == null || page < 0 || size <= 0)
+            return filtrado;
         int from = Math.min(page * size, filtrado.size());
         int to = Math.min(from + size, filtrado.size());
         return filtrado.subList(from, to);
@@ -79,6 +114,10 @@ public class EmpresaService {
 
     public Optional<Empresa> obtener(Long id) {
         return empresaPort.findById(id);
+    }
+
+    public boolean tieneSuscripcionActiva(Long empresaId) {
+        return suscripcionPort.findActivaByEmpresaId(empresaId).isPresent();
     }
 
     public Optional<Empresa> obtenerPorSlug(String slug) {
@@ -91,16 +130,58 @@ public class EmpresaService {
             String slug = generarSlug(empresa.getNombre());
             empresa.setSlug(slug);
         }
-        return empresaPort.save(empresa);
+
+        boolean esNueva = empresa.getId() == null;
+        Empresa saved = empresaPort.save(empresa);
+
+        if (esNueva) {
+            // Asignar plan gratuito por defecto (ID 1)
+            // TODO: Buscar plan por nombre o configuración en lugar de ID fijo
+            try {
+                // Buscamos el plan gratuito (asumiendo que es el ID 1 o el primero con precio
+                // 0)
+                // Por simplicidad usaremos ID 1 como dice la migración
+                suscripcionService.asignarPlan(saved.getId(), 1L, java.math.BigDecimal.ZERO);
+
+                // Actualizar referencia en empresa
+                saved.setPlanActualId(1L);
+                empresaPort.save(saved);
+            } catch (Exception e) {
+                // Log error pero no fallar la creación de empresa?
+                // O fallar para garantizar consistencia?
+                // Por ahora logueamos (system out) y continuamos
+                System.err.println("Error asignando plan por defecto: " + e.getMessage());
+            }
+        }
+
+        return saved;
     }
 
     public boolean activar(Long id, boolean activo) {
         Optional<Empresa> opt = empresaPort.findById(id);
-        if (opt.isEmpty()) return false;
+        if (opt.isEmpty())
+            return false;
         Empresa e = opt.get();
         e.setActivo(activo);
         empresaPort.save(e);
         return true;
+    }
+
+    public Optional<com.fixa.fixa_api.domain.model.Suscripcion> asignarPlan(Long empresaId, Long planId,
+            java.math.BigDecimal precioPactado) {
+        Optional<Empresa> opt = empresaPort.findById(empresaId);
+        if (opt.isEmpty())
+            return Optional.empty();
+
+        com.fixa.fixa_api.domain.model.Suscripcion suscripcion = suscripcionService.asignarPlan(empresaId, planId,
+                precioPactado);
+
+        // Actualizar referencia en empresa
+        Empresa e = opt.get();
+        e.setPlanActualId(planId);
+        empresaPort.save(e);
+
+        return Optional.of(suscripcion);
     }
 
     /**
@@ -112,7 +193,7 @@ public class EmpresaService {
         if (nombre == null || nombre.isBlank()) {
             return "empresa-" + System.currentTimeMillis();
         }
-        
+
         return nombre
                 .toLowerCase()
                 .trim()

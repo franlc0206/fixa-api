@@ -22,16 +22,19 @@ public class BackofficeAccessFilter extends OncePerRequestFilter {
     private final CurrentUserService currentUserService;
     private final UsuarioEmpresaRepositoryPort usuarioEmpresaPort;
     private final ObjectMapper objectMapper;
+    private final com.fixa.fixa_api.application.service.SuscripcionService suscripcionService;
 
     // Regex para extraer empresaId de rutas como /api/empresas/{id}/...
     private static final Pattern EMPRESA_PATH_PATTERN = Pattern.compile("^/api/empresas/(\\d+)(/.*)?$");
 
     public BackofficeAccessFilter(CurrentUserService currentUserService,
             UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            com.fixa.fixa_api.application.service.SuscripcionService suscripcionService) {
         this.currentUserService = currentUserService;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
         this.objectMapper = objectMapper;
+        this.suscripcionService = suscripcionService;
     }
 
     @Override
@@ -84,6 +87,14 @@ public class BackofficeAccessFilter extends OncePerRequestFilter {
                                 "No tienes acceso a la empresa solicitada (" + empresaId + ")");
                         return;
                     }
+                    // Validar suscripción activa
+                    try {
+                        suscripcionService.validarSuscripcionActiva(empresaId);
+                    } catch (com.fixa.fixa_api.infrastructure.in.web.error.ApiException e) {
+                        sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN, "SUBSCRIPTION_EXPIRED",
+                                e.getMessage());
+                        return;
+                    }
                 } catch (NumberFormatException e) {
                     // ID no válido, dejamos pasar y que el controller falle o 404
                 }
@@ -105,6 +116,10 @@ public class BackofficeAccessFilter extends OncePerRequestFilter {
                         "No tienes ninguna empresa activa asociada a tu cuenta.");
                 return;
             }
+            // Opcional: Validar que al menos una empresa tenga suscripción activa?
+            // Por ahora no bloqueamos el acceso general al backoffice, solo a recursos
+            // específicos
+            // O podríamos redirigir a la pantalla de selección de empresa.
         }
 
         filterChain.doFilter(request, response);

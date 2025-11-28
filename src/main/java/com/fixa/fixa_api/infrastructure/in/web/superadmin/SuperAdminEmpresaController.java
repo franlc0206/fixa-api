@@ -17,6 +17,18 @@ public class SuperAdminEmpresaController {
         this.empresaService = empresaService;
     }
 
+    @GetMapping
+    public ResponseEntity<java.util.List<Empresa>> listar() {
+        return ResponseEntity.ok(empresaService.listar(null));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Empresa> obtener(@PathVariable Long id) {
+        return empresaService.obtener(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<Empresa> crear(@Valid @RequestBody EmpresaRequest req) {
         Empresa saved = empresaService.guardar(mapToDomain(null, req));
@@ -34,6 +46,37 @@ public class SuperAdminEmpresaController {
     public ResponseEntity<Void> activar(@PathVariable Long id, @RequestParam("activo") boolean activo) {
         boolean ok = empresaService.activar(id, activo);
         return ok ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/{id}/plan")
+    public ResponseEntity<com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse> asignarPlan(
+            @PathVariable Long id,
+            @Valid @RequestBody com.fixa.fixa_api.infrastructure.in.web.dto.AsignarPlanRequest req) {
+
+        // Delegamos al servicio de suscripción a través de una inyección directa o vía
+        // EmpresaService
+        // Como EmpresaService ya tiene SuscripcionService, podríamos exponerlo allí,
+        // pero para mantener separación de responsabilidades, inyectaremos
+        // SuscripcionService aquí también.
+        // O mejor, agregamos el método en EmpresaService para encapsular.
+
+        // Por simplicidad y dado que no modifiqué el constructor para inyectar
+        // SuscripcionService aquí,
+        // voy a usar un método nuevo en EmpresaService que delegue.
+
+        return empresaService.asignarPlan(id, req.getPlanId(), req.getPrecioPactado())
+                .map(s -> {
+                    com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse resp = new com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse();
+                    resp.setId(s.getId());
+                    resp.setEmpresaId(s.getEmpresaId());
+                    resp.setPlanId(s.getPlanId());
+                    resp.setPrecioPactado(s.getPrecioPactado());
+                    resp.setFechaInicio(s.getFechaInicio());
+                    resp.setFechaFin(s.getFechaFin());
+                    resp.setActivo(s.isActivo());
+                    return ResponseEntity.ok(resp);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private Empresa mapToDomain(Long id, EmpresaRequest req) {

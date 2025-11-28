@@ -4,6 +4,7 @@ import com.fixa.fixa_api.application.service.CalendarioQueryService;
 import com.fixa.fixa_api.application.service.EmpleadoService;
 import com.fixa.fixa_api.application.service.EmpresaService;
 import com.fixa.fixa_api.application.service.ServicioService;
+import com.fixa.fixa_api.application.service.SuscripcionService;
 import com.fixa.fixa_api.domain.model.Empleado;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Servicio;
@@ -11,6 +12,7 @@ import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.domain.repository.UsuarioEmpresaRepositoryPort;
 import com.fixa.fixa_api.infrastructure.in.web.dto.CalendarioEventoDTO;
 import com.fixa.fixa_api.infrastructure.in.web.dto.EmpresaRequest;
+import com.fixa.fixa_api.infrastructure.in.web.dto.PlanInfoResponse;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -33,6 +35,7 @@ public class BackOfficeController {
     private final CalendarioQueryService calendarioQueryService;
     private final ServicioService servicioService;
     private final EmpleadoService empleadoService;
+    private final SuscripcionService suscripcionService;
 
     public BackOfficeController(
             EmpresaService empresaService,
@@ -40,13 +43,15 @@ public class BackOfficeController {
             UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
             CalendarioQueryService calendarioQueryService,
             ServicioService servicioService,
-            EmpleadoService empleadoService) {
+            EmpleadoService empleadoService,
+            SuscripcionService suscripcionService) {
         this.empresaService = empresaService;
         this.currentUserService = currentUserService;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
         this.calendarioQueryService = calendarioQueryService;
         this.servicioService = servicioService;
         this.empleadoService = empleadoService;
+        this.suscripcionService = suscripcionService;
     }
 
     /**
@@ -106,6 +111,69 @@ public class BackOfficeController {
 
         Empresa saved = empresaService.guardar(d);
         return ResponseEntity.ok(saved);
+    }
+
+    @GetMapping("/plan-info")
+    public ResponseEntity<PlanInfoResponse> obtenerInfoPlan() {
+        Long userId = currentUserService.getCurrentUserId()
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
+
+        var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
+        var primeraEmpresaActiva = usuarioEmpresas.stream()
+                .filter(ue -> ue.isActivo())
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas"));
+
+        Long empresaId = primeraEmpresaActiva.getEmpresaId();
+        var plan = suscripcionService.obtenerPlanActual(empresaId);
+
+        // Calcular uso actual
+        long empleadosUsados = empleadoService.listarPorEmpresa(empresaId).stream().filter(Empleado::isActivo).count();
+        long serviciosUsados = servicioService.listarPorEmpresa(empresaId).stream().filter(Servicio::isActivo).count();
+
+        // TODO: Implementar conteo real de turnos mensuales. Por ahora mockeamos o
+        // devolvemos 0.
+        long turnosUsados = 0;
+
+        PlanInfoResponse response = new PlanInfoResponse();
+        response.setPlanNombre(plan.getNombre());
+
+        PlanInfoResponse.LimitesInfo limites = new PlanInfoResponse.LimitesInfo();
+        limites.setEmpleados(new PlanInfoResponse.DetalleLimite(empleadosUsados, plan.getMaxEmpleados()));
+        limites.setServicios(new PlanInfoResponse.DetalleLimite(serviciosUsados, plan.getMaxServicios()));
+        limites.setTurnosMensuales(new PlanInfoResponse.DetalleLimite(turnosUsados, plan.getMaxTurnosMensuales()));
+
+        response.setLimites(limites);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/suscripcion")
+    public ResponseEntity<com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse> obtenerSuscripcion() {
+        Long userId = currentUserService.getCurrentUserId()
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
+
+        var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
+        var primeraEmpresaActiva = usuarioEmpresas.stream()
+                .filter(ue -> ue.isActivo())
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas"));
+
+        Long empresaId = primeraEmpresaActiva.getEmpresaId();
+
+        return suscripcionService.obtenerSuscripcionActiva(empresaId)
+                .map(s -> {
+                    com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse resp = new com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse();
+                    resp.setId(s.getId());
+                    resp.setEmpresaId(s.getEmpresaId());
+                    resp.setPlanId(s.getPlanId());
+                    resp.setPrecioPactado(s.getPrecioPactado());
+                    resp.setFechaInicio(s.getFechaInicio());
+                    resp.setFechaFin(s.getFechaFin());
+                    resp.setActivo(s.isActivo());
+                    return ResponseEntity.ok(resp);
+                })
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "No se encontró una suscripción activa"));
     }
 
     /**

@@ -61,4 +61,8 @@ public class EmpresaEntity {
 
     @Column(name = "activo")
     private boolean activo;
+
+    @ManyToOne
+    @JoinColumn(name = "plan_actual_id")
+    private com.fixa.fixa_api.infrastructure.out.persistence.entity.PlanEntity planActual;
 }
