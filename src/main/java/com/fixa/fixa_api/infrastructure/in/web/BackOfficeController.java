@@ -192,6 +192,7 @@ public class BackOfficeController {
      */
     @GetMapping("/calendario")
     public ResponseEntity<List<CalendarioEventoDTO>> obtenerCalendario(
+            @RequestParam(required = false) Long empresaId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
             @RequestParam(required = false) Long empleadoId,
@@ -200,6 +201,7 @@ public class BackOfficeController {
         System.out.println("========================================");
         System.out.println(" [CALENDARIO CONTROLLER] Método obtenerCalendario iniciado");
         System.out.println(" [CALENDARIO CONTROLLER] Params:");
+        System.out.println("  - empresaId: " + empresaId);
         System.out.println("  - desde: " + desde);
         System.out.println("  - hasta: " + hasta);
         System.out.println("  - empleadoId: " + empleadoId);
@@ -218,16 +220,28 @@ public class BackOfficeController {
         var usuarioEmpresas = usuarioEmpresaPort.findByUsuario(userId);
         System.out.println(" [CALENDARIO CONTROLLER] Empresas del usuario: " + usuarioEmpresas.size());
 
-        // Ya no aceptamos empresaId por parámetro. Buscamos la primera activa.
-        var primeraEmpresaActiva = usuarioEmpresas.stream()
-                .filter(ue -> ue.isActivo())
-                .findFirst()
-                .orElseThrow(() -> {
-                    System.out.println(" [CALENDARIO CONTROLLER] Usuario sin empresa activa");
-                    return new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas");
-                });
+        Long empresaIdSeleccionada;
 
-        Long empresaIdSeleccionada = primeraEmpresaActiva.getEmpresaId();
+        if (empresaId != null) {
+            // Validar que la empresa recibida pertenece al usuario y está activa
+            boolean pertenece = usuarioEmpresas.stream()
+                    .anyMatch(ue -> ue.isActivo() && ue.getEmpresaId().equals(empresaId));
+            if (!pertenece) {
+                System.out.println(" [CALENDARIO CONTROLLER] Empresa enviada no pertenece al usuario o no está activa: " + empresaId);
+                throw new ApiException(HttpStatus.FORBIDDEN, "No tienes acceso a la empresa seleccionada");
+            }
+            empresaIdSeleccionada = empresaId;
+        } else {
+            // Fallback: primera empresa activa
+            var primeraEmpresaActiva = usuarioEmpresas.stream()
+                    .filter(ue -> ue.isActivo())
+                    .findFirst()
+                    .orElseThrow(() -> {
+                        System.out.println(" [CALENDARIO CONTROLLER] Usuario sin empresa activa");
+                        return new ApiException(HttpStatus.FORBIDDEN, "No tienes empresas activas");
+                    });
+            empresaIdSeleccionada = primeraEmpresaActiva.getEmpresaId();
+        }
 
         System.out.println(" [CALENDARIO CONTROLLER] Empresa ID seleccionada: " + empresaIdSeleccionada);
 
