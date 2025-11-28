@@ -1,9 +1,11 @@
 package com.fixa.fixa_api.application.service;
 
+import com.fixa.fixa_api.domain.model.Categoria;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Servicio;
 import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.domain.model.Valoracion;
+import com.fixa.fixa_api.domain.repository.CategoriaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
 import com.fixa.fixa_api.domain.repository.TurnoRepositoryPort;
@@ -22,15 +24,18 @@ public class RecomendacionService {
     private final EmpresaRepositoryPort empresaPort;
     private final ValoracionRepositoryPort valoracionPort;
     private final TurnoRepositoryPort turnoPort;
+    private final CategoriaRepositoryPort categoriaPort;
 
     public RecomendacionService(ServicioRepositoryPort servicioPort,
-                                EmpresaRepositoryPort empresaPort,
-                                ValoracionRepositoryPort valoracionPort,
-                                TurnoRepositoryPort turnoPort) {
+            EmpresaRepositoryPort empresaPort,
+            ValoracionRepositoryPort valoracionPort,
+            TurnoRepositoryPort turnoPort,
+            CategoriaRepositoryPort categoriaPort) {
         this.servicioPort = servicioPort;
         this.empresaPort = empresaPort;
         this.valoracionPort = valoracionPort;
         this.turnoPort = turnoPort;
+        this.categoriaPort = categoriaPort;
     }
 
     @Data
@@ -42,6 +47,7 @@ public class RecomendacionService {
         private String descripcion;
         private Integer duracionMinutos;
         private BigDecimal precio;
+        private String fotoUrl;
         private double promedioValoracion;
         private long totalValoraciones;
         private double score;
@@ -89,11 +95,13 @@ public class RecomendacionService {
             return List.of();
         }
 
-        // 1) Tomar todos los servicios activos de empresas visibles (y opcionalmente filtrados por categoría)
+        // 1) Tomar todos los servicios activos de empresas visibles (y opcionalmente
+        // filtrados por categoría)
         List<Servicio> serviciosActivos = servicioPort.findAll().stream()
                 .filter(Servicio::isActivo)
                 .filter(s -> s.getEmpresaId() != null && empresaPorId.containsKey(s.getEmpresaId()))
-                .filter(s -> categoriaId == null || (s.getCategoriaId() != null && s.getCategoriaId().equals(categoriaId)))
+                .filter(s -> categoriaId == null
+                        || (s.getCategoriaId() != null && s.getCategoriaId().equals(categoriaId)))
                 .collect(Collectors.toList());
 
         if (serviciosActivos.isEmpty()) {
@@ -103,10 +111,12 @@ public class RecomendacionService {
         Map<Long, Servicio> servicioPorId = serviciosActivos.stream()
                 .collect(Collectors.toMap(Servicio::getId, s -> s));
 
-        // 2) Obtener todas las valoraciones activas (si no hay, igual construimos el ranking con score 0)
+        // 2) Obtener todas las valoraciones activas (si no hay, igual construimos el
+        // ranking con score 0)
         List<Valoracion> valoraciones = valoracionPort.findAllActivas();
 
-        // 3) Mapear turnoId -> servicioId usando TurnoRepositoryPort (cache básico en memoria)
+        // 3) Mapear turnoId -> servicioId usando TurnoRepositoryPort (cache básico en
+        // memoria)
         Map<Long, Long> servicioIdPorTurnoId = new HashMap<>();
 
         class ServicioStats {
@@ -118,7 +128,8 @@ public class RecomendacionService {
 
         if (valoraciones != null && !valoraciones.isEmpty()) {
             for (Valoracion v : valoraciones) {
-                if (v.getTurnoId() == null || v.getPuntuacion() == null) continue;
+                if (v.getTurnoId() == null || v.getPuntuacion() == null)
+                    continue;
 
                 Long turnoId = v.getTurnoId();
                 Long servicioId = servicioIdPorTurnoId.get(turnoId);
@@ -130,11 +141,13 @@ public class RecomendacionService {
                     servicioIdPorTurnoId.put(turnoId, servicioId);
                 }
 
-                if (servicioId == null) continue;
+                if (servicioId == null)
+                    continue;
 
                 Servicio servicio = servicioPorId.get(servicioId);
                 if (servicio == null) {
-                    // El servicio no está activo o no cumple el filtro de categoría / empresa visible
+                    // El servicio no está activo o no cumple el filtro de categoría / empresa
+                    // visible
                     continue;
                 }
 
@@ -144,7 +157,8 @@ public class RecomendacionService {
             }
         }
 
-        // 4) Construir DTO de recomendados calculando promedio y score para TODOS los servicios activos
+        // 4) Construir DTO de recomendados calculando promedio y score para TODOS los
+        // servicios activos
         return serviciosActivos.stream()
                 .map(servicio -> {
                     ServicioStats stats = statsPorServicio.getOrDefault(servicio.getId(), new ServicioStats());
@@ -156,6 +170,15 @@ public class RecomendacionService {
                     Empresa empresa = empresaPorId.get(servicio.getEmpresaId());
                     String empresaNombre = empresa != null ? empresa.getNombre() : null;
 
+                    // Determinar fotoUrl: usar la del servicio, o si no tiene, la de la categoría
+                    String fotoUrl = servicio.getFotoUrl();
+                    if ((fotoUrl == null || fotoUrl.trim().isEmpty()) && servicio.getCategoriaId() != null) {
+                        Categoria categoria = categoriaPort.findById(servicio.getCategoriaId()).orElse(null);
+                        if (categoria != null) {
+                            fotoUrl = categoria.getFotoDefault();
+                        }
+                    }
+
                     ServicioRecomendado dto = new ServicioRecomendado();
                     dto.setId(servicio.getId());
                     dto.setEmpresaId(servicio.getEmpresaId());
@@ -164,6 +187,7 @@ public class RecomendacionService {
                     dto.setDescripcion(servicio.getDescripcion());
                     dto.setDuracionMinutos(servicio.getDuracionMinutos());
                     dto.setPrecio(servicio.getCosto());
+                    dto.setFotoUrl(fotoUrl);
                     dto.setPromedioValoracion(promedioRedondeado);
                     dto.setTotalValoraciones(stats.totalValoraciones);
                     dto.setScore(calcularScore(promedioRedondeado, stats.totalValoraciones));
@@ -175,7 +199,8 @@ public class RecomendacionService {
     }
 
     private double calcularScore(double promedio, long totalValoraciones) {
-        if (totalValoraciones <= 0) return 0.0;
+        if (totalValoraciones <= 0)
+            return 0.0;
         double factorCantidad = Math.log10(totalValoraciones + 1); // penaliza servicios con muy pocas valoraciones
         return promedio * factorCantidad;
     }

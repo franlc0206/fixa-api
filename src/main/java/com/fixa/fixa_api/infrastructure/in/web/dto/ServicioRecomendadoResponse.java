@@ -12,6 +12,7 @@ public class ServicioRecomendadoResponse {
     private String descripcion;
     private Integer duracionMinutos;
     private BigDecimal precio;
+    private String fotoUrl;
     private double promedioValoracion;
     private long totalValoraciones;
 
@@ -24,6 +25,7 @@ public class ServicioRecomendadoResponse {
         dto.setDescripcion(src.getDescripcion());
         dto.setDuracionMinutos(src.getDuracionMinutos());
         dto.setPrecio(src.getPrecio());
+        dto.setFotoUrl(src.getFotoUrl());
         dto.setPromedioValoracion(src.getPromedioValoracion());
         dto.setTotalValoraciones(src.getTotalValoraciones());
         return dto;
@@ -83,6 +85,14 @@ public class ServicioRecomendadoResponse {
 
     public void setPrecio(BigDecimal precio) {
         this.precio = precio;
+    }
+
+    public String getFotoUrl() {
+        return fotoUrl;
+    }
+
+    public void setFotoUrl(String fotoUrl) {
+        this.fotoUrl = fotoUrl;
     }
 
     public double getPromedioValoracion() {
