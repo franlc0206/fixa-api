@@ -21,8 +21,7 @@ public class SuperAdminRelacionesController {
             @RequestParam(value = "usuarioId", required = false) Long usuarioId,
             @RequestParam(value = "empresaId", required = false) Long empresaId,
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
-            @RequestParam(value = "size", required = false, defaultValue = "20") int size
-    ) {
+            @RequestParam(value = "size", required = false, defaultValue = "20") int size) {
         if (usuarioId != null) {
             List<SuperAdminRelacionService.RelacionDTO> items = service.listByUsuario(usuarioId);
             return ResponseEntity.ok(items);
@@ -35,21 +34,22 @@ public class SuperAdminRelacionesController {
     }
 
     @PostMapping
-    public ResponseEntity<SuperAdminRelacionService.RelacionDTO> add(@RequestBody SuperAdminRelacionService.RelacionDTO req) {
+    public ResponseEntity<SuperAdminRelacionService.RelacionDTO> add(
+            @RequestBody SuperAdminRelacionService.RelacionDTO req) {
         return ResponseEntity.ok(service.add(req));
     }
 
     @DeleteMapping
     public ResponseEntity<Void> remove(@RequestParam("usuarioId") Long usuarioId,
-                                       @RequestParam("empresaId") Long empresaId) {
+            @RequestParam("empresaId") Long empresaId) {
         service.remove(usuarioId, empresaId);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/activar")
     public ResponseEntity<Void> activar(@RequestParam("usuarioId") Long usuarioId,
-                                        @RequestParam("empresaId") Long empresaId,
-                                        @RequestParam("activo") boolean activo) {
+            @RequestParam("empresaId") Long empresaId,
+            @RequestParam("activo") boolean activo) {
         service.activar(usuarioId, empresaId, activo);
         return ResponseEntity.noContent().build();
     }

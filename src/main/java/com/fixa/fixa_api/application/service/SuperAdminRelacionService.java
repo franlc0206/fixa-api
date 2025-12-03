@@ -22,7 +22,8 @@ public class SuperAdminRelacionService {
         public String usuarioEmail;
         public String usuarioNombre;
         public String empresaNombre;
-        public static RelacionDTO of(UsuarioEmpresa d){
+
+        public static RelacionDTO of(UsuarioEmpresa d) {
             RelacionDTO r = new RelacionDTO();
             r.usuarioId = d.getUsuarioId();
             r.empresaId = d.getEmpresaId();
@@ -45,14 +46,14 @@ public class SuperAdminRelacionService {
     private final EmpresaRepositoryPort empresaPort;
 
     public SuperAdminRelacionService(UsuarioEmpresaRepositoryPort uePort,
-                                     UsuarioRepositoryPort usuarioPort,
-                                     EmpresaRepositoryPort empresaPort) {
+            UsuarioRepositoryPort usuarioPort,
+            EmpresaRepositoryPort empresaPort) {
         this.uePort = uePort;
         this.usuarioPort = usuarioPort;
         this.empresaPort = empresaPort;
     }
 
-    public List<RelacionDTO> listByUsuario(Long usuarioId){
+    public List<RelacionDTO> listByUsuario(Long usuarioId) {
         List<RelacionDTO> items = uePort.findByUsuario(usuarioId).stream()
                 .map(RelacionDTO::of)
                 .collect(Collectors.toList());
@@ -60,7 +61,7 @@ public class SuperAdminRelacionService {
         return items;
     }
 
-    public List<RelacionDTO> listByEmpresa(Long empresaId){
+    public List<RelacionDTO> listByEmpresa(Long empresaId) {
         List<RelacionDTO> items = uePort.findByEmpresa(empresaId).stream()
                 .map(RelacionDTO::of)
                 .collect(Collectors.toList());
@@ -68,7 +69,7 @@ public class SuperAdminRelacionService {
         return items;
     }
 
-    public PageResponse<RelacionDTO> listAllPaged(int page, int size){
+    public PageResponse<RelacionDTO> listAllPaged(int page, int size) {
         List<RelacionDTO> all = uePort.findAll().stream().map(RelacionDTO::of).collect(Collectors.toList());
         int from = Math.max(0, page * size);
         int to = Math.min(all.size(), from + size);
@@ -83,11 +84,15 @@ public class SuperAdminRelacionService {
         return resp;
     }
 
-    public RelacionDTO add(RelacionDTO req){
-        if (req.usuarioId == null) throw new ApiException(HttpStatus.BAD_REQUEST, "usuarioId requerido");
-        if (req.empresaId == null) throw new ApiException(HttpStatus.BAD_REQUEST, "empresaId requerido");
-        usuarioPort.findById(req.usuarioId).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Usuario inexistente"));
-        empresaPort.findById(req.empresaId).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Empresa inexistente"));
+    public RelacionDTO add(RelacionDTO req) {
+        if (req.usuarioId == null)
+            throw new ApiException(HttpStatus.BAD_REQUEST, "usuarioId requerido");
+        if (req.empresaId == null)
+            throw new ApiException(HttpStatus.BAD_REQUEST, "empresaId requerido");
+        usuarioPort.findById(req.usuarioId)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Usuario inexistente"));
+        empresaPort.findById(req.empresaId)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Empresa inexistente"));
         UsuarioEmpresa d = new UsuarioEmpresa();
         d.setUsuarioId(req.usuarioId);
         d.setEmpresaId(req.empresaId);
@@ -98,7 +103,7 @@ public class SuperAdminRelacionService {
         return resp;
     }
 
-    public void remove(Long usuarioId, Long empresaId){
+    public void remove(Long usuarioId, Long empresaId) {
         if (usuarioId == null || empresaId == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "usuarioId y empresaId requeridos");
         }
@@ -122,7 +127,8 @@ public class SuperAdminRelacionService {
     }
 
     private void enrich(RelacionDTO r) {
-        if (r == null) return;
+        if (r == null)
+            return;
 
         if (r.usuarioId != null) {
             usuarioPort.findById(r.usuarioId).ifPresent(u -> {

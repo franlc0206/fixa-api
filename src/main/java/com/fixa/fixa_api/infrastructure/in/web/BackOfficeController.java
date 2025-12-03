@@ -5,6 +5,7 @@ import com.fixa.fixa_api.application.service.EmpleadoService;
 import com.fixa.fixa_api.application.service.EmpresaService;
 import com.fixa.fixa_api.application.service.ServicioService;
 import com.fixa.fixa_api.application.service.SuscripcionService;
+import com.fixa.fixa_api.application.service.TurnoIntervaloCalculator;
 import com.fixa.fixa_api.domain.model.Empleado;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.model.Servicio;
@@ -13,6 +14,7 @@ import com.fixa.fixa_api.domain.repository.UsuarioEmpresaRepositoryPort;
 import com.fixa.fixa_api.infrastructure.in.web.dto.CalendarioEventoDTO;
 import com.fixa.fixa_api.infrastructure.in.web.dto.EmpresaRequest;
 import com.fixa.fixa_api.infrastructure.in.web.dto.PlanInfoResponse;
+import com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -36,6 +38,7 @@ public class BackOfficeController {
     private final ServicioService servicioService;
     private final EmpleadoService empleadoService;
     private final SuscripcionService suscripcionService;
+    private final TurnoIntervaloCalculator turnoIntervaloCalculator;
 
     public BackOfficeController(
             EmpresaService empresaService,
@@ -44,7 +47,8 @@ public class BackOfficeController {
             CalendarioQueryService calendarioQueryService,
             ServicioService servicioService,
             EmpleadoService empleadoService,
-            SuscripcionService suscripcionService) {
+            SuscripcionService suscripcionService,
+            TurnoIntervaloCalculator turnoIntervaloCalculator) {
         this.empresaService = empresaService;
         this.currentUserService = currentUserService;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
@@ -52,6 +56,7 @@ public class BackOfficeController {
         this.servicioService = servicioService;
         this.empleadoService = empleadoService;
         this.suscripcionService = suscripcionService;
+        this.turnoIntervaloCalculator = turnoIntervaloCalculator;
     }
 
     /**
@@ -140,9 +145,11 @@ public class BackOfficeController {
         var plan = suscripcionService.obtenerPlanActual(empresaIdSeleccionada);
 
         // Calcular uso actual
-        long empleadosUsados = empleadoService.listarPorEmpresa(empresaIdSeleccionada).stream().filter(Empleado::isActivo)
+        long empleadosUsados = empleadoService.listarPorEmpresa(empresaIdSeleccionada).stream()
+                .filter(Empleado::isActivo)
                 .count();
-        long serviciosUsados = servicioService.listarPorEmpresa(empresaIdSeleccionada).stream().filter(Servicio::isActivo)
+        long serviciosUsados = servicioService.listarPorEmpresa(empresaIdSeleccionada).stream()
+                .filter(Servicio::isActivo)
                 .count();
 
         // TODO: Implementar conteo real de turnos mensuales. Por ahora mockeamos o
@@ -163,7 +170,7 @@ public class BackOfficeController {
     }
 
     @GetMapping("/suscripcion")
-    public ResponseEntity<com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse> obtenerSuscripcion() {
+    public ResponseEntity<SuscripcionResponse> obtenerSuscripcion() {
         Long userId = currentUserService.getCurrentUserId()
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
 
@@ -177,7 +184,7 @@ public class BackOfficeController {
 
         return suscripcionService.obtenerSuscripcionActiva(empresaId)
                 .map(s -> {
-                    com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse resp = new com.fixa.fixa_api.infrastructure.in.web.dto.SuscripcionResponse();
+                    SuscripcionResponse resp = new SuscripcionResponse();
                     resp.setId(s.getId());
                     resp.setEmpresaId(s.getEmpresaId());
                     resp.setPlanId(s.getPlanId());
@@ -241,7 +248,8 @@ public class BackOfficeController {
             boolean pertenece = usuarioEmpresas.stream()
                     .anyMatch(ue -> ue.isActivo() && ue.getEmpresaId().equals(empresaId));
             if (!pertenece) {
-                System.out.println(" [CALENDARIO CONTROLLER] Empresa enviada no pertenece al usuario o no está activa: " + empresaId);
+                System.out.println(" [CALENDARIO CONTROLLER] Empresa enviada no pertenece al usuario o no está activa: "
+                        + empresaId);
                 throw new ApiException(HttpStatus.FORBIDDEN, "No tienes acceso a la empresa seleccionada");
             }
             empresaIdSeleccionada = empresaId;
@@ -273,9 +281,9 @@ public class BackOfficeController {
 
         System.out.println(" [CALENDARIO CONTROLLER] Turnos obtenidos: " + turnos.size());
 
-        // Mapear turnos a DTOs en formato FullCalendar
+        // Mapear turnos a DTOs en formato FullCalendar (expandiendo intervalos)
         List<CalendarioEventoDTO> eventos = turnos.stream()
-                .map(turno -> mapearTurnoAEvento(turno))
+                .flatMap(turno -> expandirTurnoAEventos(turno).stream())
                 .collect(Collectors.toList());
 
         System.out.println(" [CALENDARIO CONTROLLER] Eventos mapeados: " + eventos.size());
@@ -286,16 +294,52 @@ public class BackOfficeController {
     }
 
     /**
-     * Mapea un Turno del dominio a CalendarioEventoDTO (formato FullCalendar).
-     * Helper privado que pertenece a la capa de infraestructura (controller).
+     * Expande un turno en múltiples eventos si tiene intervalos de trabajo
+     * discontinuos.
      */
-    private CalendarioEventoDTO mapearTurnoAEvento(Turno turno) {
+    private List<CalendarioEventoDTO> expandirTurnoAEventos(Turno turno) {
+        Servicio servicio = null;
+        if (turno.getServicioId() != null) {
+            servicio = servicioService.obtener(turno.getServicioId()).orElse(null);
+        }
+
+        // Si no hay servicio o no tiene etapas complejas, retornar evento simple
+        if (servicio == null || servicio.getEtapas().size() <= 1) {
+            return List.of(mapearTurnoAEvento(turno, null, null, null));
+        }
+
+        // Desglosar todas las etapas (TRABAJO y ESPERA)
+        var etapas = turnoIntervaloCalculator.desglosarEtapas(turno, servicio);
+
+        List<CalendarioEventoDTO> eventos = new java.util.ArrayList<>();
+        int index = 1;
+        for (var etapa : etapas) {
+            // Crear evento para este sub-bloque
+            CalendarioEventoDTO evento = mapearTurnoAEvento(turno, etapa.inicio(), etapa.fin(), etapa.tipo());
+            evento.setId(turno.getId() * 10000 + index);
+
+            eventos.add(evento);
+            index++;
+        }
+        return eventos;
+    }
+
+    /**
+     * Mapea un Turno a CalendarioEventoDTO.
+     * Si start/end son null, usa los del turno.
+     */
+    private CalendarioEventoDTO mapearTurnoAEvento(Turno turno, LocalDateTime startOverride, LocalDateTime endOverride,
+            com.fixa.fixa_api.domain.model.ServicioEtapa.TipoEtapa tipoEtapa) {
         CalendarioEventoDTO evento = new CalendarioEventoDTO();
 
         // Campos básicos
         evento.setId(turno.getId());
-        evento.setStart(turno.getFechaHoraInicio().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        evento.setEnd(turno.getFechaHoraFin().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+
+        LocalDateTime start = startOverride != null ? startOverride : turno.getFechaHoraInicio();
+        LocalDateTime end = endOverride != null ? endOverride : turno.getFechaHoraFin();
+
+        evento.setStart(start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        evento.setEnd(end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         evento.setEstado(turno.getEstado());
         evento.setAllDay(false);
 
@@ -327,10 +371,28 @@ public class BackOfficeController {
         evento.setEmpleadoId(turno.getEmpleadoId());
 
         // Título del evento para FullCalendar
-        evento.setTitle(nombreCliente + " - " + nombreServicio);
+        if (tipoEtapa == com.fixa.fixa_api.domain.model.ServicioEtapa.TipoEtapa.ESPERA) {
+            evento.setTitle("(Espera) " + nombreServicio);
+            // Estilo visual para ESPERA (gris claro, borde punteado si fuera posible, etc)
+            evento.setBackgroundColor("#e9ecef"); // Gris muy claro
+            evento.setBorderColor("#adb5bd");
+            evento.setTextColor("#495057"); // Texto oscuro
+        } else {
+            evento.setTitle(nombreCliente + " - " + nombreServicio);
+            // Colores según estado del turno
+            aplicarColoresPorEstado(evento, turno.getEstado());
+        }
 
-        // Colores según estado
-        switch (turno.getEstado().toUpperCase()) {
+        // Campos adicionales
+        evento.setObservaciones(turno.getObservaciones());
+        evento.setRequiereValidacion(turno.isRequiereValidacion());
+        evento.setTelefonoValidado(turno.isTelefonoValidado());
+
+        return evento;
+    }
+
+    private void aplicarColoresPorEstado(CalendarioEventoDTO evento, String estado) {
+        switch (estado.toUpperCase()) {
             case "CONFIRMADO":
                 evento.setBackgroundColor("#28a745"); // Verde
                 evento.setBorderColor("#28a745");
@@ -357,12 +419,5 @@ public class BackOfficeController {
                 evento.setBorderColor("#007bff");
                 evento.setTextColor("#ffffff");
         }
-
-        // Campos adicionales
-        evento.setObservaciones(turno.getObservaciones());
-        evento.setRequiereValidacion(turno.isRequiereValidacion());
-        evento.setTelefonoValidado(turno.isTelefonoValidado());
-
-        return evento;
     }
 }

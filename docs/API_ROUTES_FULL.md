@@ -332,6 +332,7 @@ CORS: http://localhost:5173
 ## Disponibilidad (por empleado)
 
 - GET /api/empleados/{empleadoId}/disponibilidad
+  - Query: `servicioId` (opcional) - Si se envía, filtra los slots para mostrar solo donde es posible iniciar este servicio (considerando intervalos de espera).
   - 200: Disponibilidad[]
 
 - POST /api/empleados/{empleadoId}/disponibilidad

@@ -17,36 +17,45 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCase, com.fixa.fixa_api.application.usecase.CancelarTurnoUseCase, com.fixa.fixa_api.application.usecase.CompletarTurnoUseCase {
+public class TurnoCommandService
+        implements CrearTurnoUseCase, AprobarTurnoUseCase, com.fixa.fixa_api.application.usecase.CancelarTurnoUseCase,
+        com.fixa.fixa_api.application.usecase.CompletarTurnoUseCase {
 
     private final TurnoRepositoryPort turnoPort;
     private final ServicioRepositoryPort servicioPort;
     private final EmpleadoRepositoryPort empleadoPort;
     private final EmpresaRepositoryPort empresaPort;
     private final ConfigReglaQueryPort configReglaPort;
+    private final TurnoIntervaloCalculator turnoIntervaloCalculator;
 
     public TurnoCommandService(
             TurnoRepositoryPort turnoPort,
             ServicioRepositoryPort servicioPort,
             EmpleadoRepositoryPort empleadoPort,
             EmpresaRepositoryPort empresaPort,
-            ConfigReglaQueryPort configReglaPort) {
+            ConfigReglaQueryPort configReglaPort,
+            TurnoIntervaloCalculator turnoIntervaloCalculator) {
         this.turnoPort = turnoPort;
         this.servicioPort = servicioPort;
         this.empleadoPort = empleadoPort;
         this.empresaPort = empresaPort;
         this.configReglaPort = configReglaPort;
+        this.turnoIntervaloCalculator = turnoIntervaloCalculator;
     }
 
     @Override
     @Transactional
     public Turno ejecutar(Turno turno) {
         // BLOQUEO TRANSACCIONAL:
-        // @Transactional provee aislamiento REPEATABLE_READ (MySQL default) que previene lecturas no repetibles.
-        // Para mayor seguridad ante alta concurrencia, se podría agregar @Lock(LockModeType.PESSIMISTIC_WRITE)
-        // en el repositorio JPA al consultar turnos existentes, bloqueando las filas hasta fin de transacción.
-        // En MVP actual, el bloqueo optimista + validación de solapamiento es suficiente.
-        
+        // @Transactional provee aislamiento REPEATABLE_READ (MySQL default) que
+        // previene lecturas no repetibles.
+        // Para mayor seguridad ante alta concurrencia, se podría agregar
+        // @Lock(LockModeType.PESSIMISTIC_WRITE)
+        // en el repositorio JPA al consultar turnos existentes, bloqueando las filas
+        // hasta fin de transacción.
+        // En MVP actual, el bloqueo optimista + validación de solapamiento es
+        // suficiente.
+
         // Cargar entidades requeridas
         var servicio = servicioPort.findById(turno.getServicioId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
@@ -72,7 +81,8 @@ public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCa
         if (minAntMinOpt.isPresent()) {
             LocalDateTime minInicio = LocalDateTime.now().plusMinutes(minAntMinOpt.get());
             if (inicio.isBefore(minInicio)) {
-                throw new ApiException(HttpStatus.CONFLICT, "El turno debe tomarse con al menos " + minAntMinOpt.get() + " minutos de anticipación");
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "El turno debe tomarse con al menos " + minAntMinOpt.get() + " minutos de anticipación");
             }
         }
 
@@ -81,7 +91,8 @@ public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCa
         if (maxAntDiasOpt.isPresent()) {
             LocalDateTime maxInicio = LocalDateTime.now().plusDays(maxAntDiasOpt.get());
             if (inicio.isAfter(maxInicio)) {
-                throw new ApiException(HttpStatus.CONFLICT, "El turno no puede reservarse con más de " + maxAntDiasOpt.get() + " días de anticipación");
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "El turno no puede reservarse con más de " + maxAntDiasOpt.get() + " días de anticipación");
             }
         }
 
@@ -96,7 +107,8 @@ public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCa
             }
         }
 
-        // Regla: máximo turnos por semana por empleado (configurable, semana Lunes-Domingo)
+        // Regla: máximo turnos por semana por empleado (configurable, semana
+        // Lunes-Domingo)
         var maxTurnosSemanaOpt = configReglaPort.getInt(empresa.getId(), "max_turnos_por_semana");
         if (maxTurnosSemanaOpt.isPresent()) {
             var fecha = inicio.toLocalDate();
@@ -104,18 +116,33 @@ public class TurnoCommandService implements CrearTurnoUseCase, AprobarTurnoUseCa
             var semanaFin = semanaInicio.plusDays(7);
             var deLaSemana = turnoPort.findByEmpleadoIdAndRango(empleado.getId(), semanaInicio, semanaFin);
             if (deLaSemana.size() >= maxTurnosSemanaOpt.get()) {
-                throw new ApiException(HttpStatus.CONFLICT, "Se superó el máximo de turnos por semana para el empleado");
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "Se superó el máximo de turnos por semana para el empleado");
             }
         }
 
-        // Validar solapamiento básico: obtener turnos del día y filtrar en memoria
+        // Validar solapamiento con intervalos: obtener turnos del día y filtrar
         LocalDateTime ventanaInicio = inicio.minusHours(12);
         var existentes = turnoPort.findByEmpleadoIdAndRango(empleado.getId(), ventanaInicio, fin);
-        boolean solapa = existentes.stream().anyMatch(t ->
-                t.getFechaHoraInicio().isBefore(fin) && t.getFechaHoraFin().isAfter(inicio)
-        );
+
+        // Filtrar solo turnos que ocupan espacio (no cancelados/completados si se desea
+        // liberar, pero completado suele ocupar)
+        // Asumimos CONFIRMADO, PENDIENTE, PENDIENTE_APROBACION ocupan.
+        List<Turno> conflictosPotenciales = existentes.stream()
+                .filter(t -> "CONFIRMADO".equalsIgnoreCase(t.getEstado()) ||
+                        "PENDIENTE".equalsIgnoreCase(t.getEstado()) ||
+                        "PENDIENTE_APROBACION".equalsIgnoreCase(t.getEstado()))
+                .toList();
+
+        boolean solapa = turnoIntervaloCalculator.haySolapamiento(
+                turno,
+                servicio,
+                conflictosPotenciales,
+                (id) -> servicioPort.findById(id).orElse(null));
+
         if (solapa) {
-            throw new ApiException(HttpStatus.CONFLICT, "Existe solapamiento de turnos para el empleado");
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Existe solapamiento de turnos para el empleado (intervalos ocupados)");
         }
 
         // Setear estado inicial según reglas (empresa)
