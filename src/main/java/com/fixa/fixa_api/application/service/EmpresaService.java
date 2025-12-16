@@ -30,6 +30,8 @@ public class EmpresaService {
         return Boolean.TRUE.equals(visibles) ? empresaPort.findVisibles() : empresaPort.findAll();
     }
 
+    
+
     public List<Empresa> listarConFiltros(Boolean visibles, Boolean activo, Long categoriaId) {
         List<Empresa> base = listar(visibles);
         return base.stream()
