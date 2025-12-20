@@ -74,6 +74,7 @@ public class NotificationServiceAdapter implements NotificationServicePort {
                 "  .message { font-size: 17px; color: #4a5568; line-height: 1.8; }" +
                 "  .footer { background: #2B3A8B; padding: 30px; text-align: center; font-size: 13px; color: #ffffff; }"
                 +
+                "  .footer b { color: #ffffff; }" +
                 "  b { color: #2B3A8B; font-weight: 700; }" +
                 "</style></head>" +
                 "<body>" +
