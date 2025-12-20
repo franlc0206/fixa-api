@@ -10,12 +10,6 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: update
-
-jwt:
-  secret: ${JWT_SECRET:change-me-super-secret-change-me-super-secret}
-  refresh-secret: ${JWT_REFRESH_SECRET:change-me-refresh-secret-change-me-refresh-secret}
-  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
-  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
     database-platform: org.hibernate.dialect.MySQL8Dialect
     properties:
       hibernate:
@@ -25,6 +19,12 @@ jwt:
     open-in-view: false
   flyway:
     enabled: false
+
+jwt:
+  secret: ${JWT_SECRET:change-me-super-secret-change-me-super-secret}
+  refresh-secret: ${JWT_REFRESH_SECRET:change-me-refresh-secret-change-me-refresh-secret}
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
 
 server:
   port: ${PORT:8080}
