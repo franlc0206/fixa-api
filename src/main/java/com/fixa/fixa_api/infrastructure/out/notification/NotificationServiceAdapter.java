@@ -57,49 +57,38 @@ public class NotificationServiceAdapter implements NotificationServicePort {
 
     private String wrapInHtmlTemplate(String content) {
         // Colores extraídos del logo/brand: Blue (#2B3A8B), Coral (#EE6B61)
-        return "<!DOCTYPE html>" +
-                "<html>" +
-                "<head>" +
+        return "<!DOCTYPE html><html><head>" +
+                "<meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
                 "<style>" +
-                "  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');" +
-                "  body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #1a202c; margin: 0; padding: 0; background-color: #f7fafc; }"
+                "  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');" +
+                "  body { font-family: 'Inter', Arial, sans-serif; line-height: 1.6; color: #1a202c; margin: 0; padding: 0; background-color: #f7fafc; }"
                 +
                 "  .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(43, 58, 139, 0.1); border: 1px solid #edf2f7; }"
                 +
                 "  .header { background-color: #ffffff; padding: 40px 30px; text-align: center; border-bottom: 4px solid #EE6B61; }"
                 +
-                "  .logo { font-size: 32px; font-weight: 800; color: #2B3A8B; letter-spacing: -1px; }" +
-                "  .logo span { color: #EE6B61; }" +
-                "  .main-content { padding: 50px 40px; background: linear-gradient(180deg, #ffffff 0%, #fcfdfe 100%); }"
+                "  .logo { font-size: 32px; font-weight: 800; color: #2B3A8B; letter-spacing: -1px; text-decoration: none; }"
                 +
+                "  .logo span { color: #EE6B61; }" +
+                "  .main-content { padding: 50px 40px; background-color: #ffffff; }" +
                 "  .message { font-size: 17px; color: #4a5568; line-height: 1.8; }" +
                 "  .footer { background: #2B3A8B; padding: 30px; text-align: center; font-size: 13px; color: #ffffff; }"
                 +
-                "  .footer a { color: #EE6B61; text-decoration: none; font-weight: 600; }" +
-                "  .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; }"
-                +
-                "  .tag-confirmed { background-color: #e6fffa; color: #2c7a7b; }" +
-                "  .tag-pending { background-color: #fffaf0; color: #9c4221; }" +
-                "  .tag-cancelled { background-color: #fff5f5; color: #c53030; }" +
-                "  b { color: #2B3A8B; }" +
-                "</style>" +
-                "</head>" +
+                "  b { color: #2B3A8B; font-weight: 700; }" +
+                "</style></head>" +
                 "<body>" +
                 "  <div class='container'>" +
                 "    <div class='header'><div class='logo'>Fix<span>e</span></div></div>" +
-                "    <div class='main-content'>" +
-                "      <div class='message'>" +
-                "        " + content.replace("\n", "<br>") +
-                "      </div>" +
-                "    </div>" +
+                "    <div class='main-content'><div class='message'>" +
+                content.replace("\n", "<br>") +
+                "    </div></div>" +
                 "    <div class='footer'>" +
                 "      &copy; 2025 <b>Fixe</b> - Potenciando tu negocio<br>" +
                 "      <div style='margin-top: 10px; opacity: 0.8;'>Este es un mensaje automático, por favor no lo respondas.</div>"
                 +
                 "    </div>" +
                 "  </div>" +
-                "</body>" +
-                "</html>";
+                "</body></html>";
     }
 
     private void send(String channel, String to, String content, Map<String, String> variables) {
