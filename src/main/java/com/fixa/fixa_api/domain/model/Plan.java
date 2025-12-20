@@ -14,4 +14,5 @@ public class Plan {
     private int maxTurnosMensuales;
     private boolean soportePrioritario;
     private boolean activo;
+    private String mercadopagoPlanId;
 }
