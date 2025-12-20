@@ -172,8 +172,9 @@ public class TurnoCommandService
             vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
             vars.put("empresa", empresa.getNombre());
 
-            String template = "Hola {{nombre}}, tu turno para {{servicio}} en {{empresa}} el día {{fecha}} ha sido registrado. Estado: "
-                    + guardado.getEstado();
+            String template = "Hola <b>{{nombre}}</b>, tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido registrado.\n\n"
+                    +
+                    "Estado actual: <b>" + guardado.getEstado() + "</b>";
             notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
         } catch (Exception e) {
             // Loguear error pero no fallar la transacción
@@ -207,7 +208,9 @@ public class TurnoCommandService
             vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
             vars.put("empresa", empresa != null ? empresa.getNombre() : "la empresa");
 
-            String template = "¡Buenas noticias {{nombre}}! Tu turno para {{servicio}} en {{empresa}} el día {{fecha}} ha sido CONFIRMADO.";
+            String template = "¡Buenas noticias <b>{{nombre}}</b>! Tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido <b>CONFIRMADO</b>.\n\n"
+                    +
+                    "¡Te esperamos!";
             notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
         } catch (Exception e) {
             // Loguear error
@@ -249,11 +252,15 @@ public class TurnoCommandService
 
             if (currentUser != null && "CLIENTE".equalsIgnoreCase(currentUser.getRol())) {
                 // Notificar a la empresa
-                String template = "El turno de {{nombre}} para {{servicio}} el día {{fecha}} ha sido CANCELADO por el cliente. Motivo: {{motivo}}";
+                String template = "El turno de <b>{{nombre}}</b> para <b>{{servicio}}</b> el día <b>{{fecha}}</b> ha sido <b>CANCELADO</b> por el cliente.\n\n"
+                        +
+                        "Motivo: <i>{{motivo}}</i>";
                 notificationPort.sendEmail(empresa != null ? empresa.getEmail() : null, template, vars);
             } else {
                 // Notificar al cliente (cancelado por empresa o empleado)
-                String template = "Hola {{nombre}}, lamentamos informarte que tu turno para {{servicio}} en {{empresa}} el día {{fecha}} ha sido CANCELADO. Motivo: {{motivo}}";
+                String template = "Hola <b>{{nombre}}</b>, lamentamos informarte que tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido <b>CANCELADO</b>.\n\n"
+                        +
+                        "Motivo: <i>{{motivo}}</i>";
                 notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
             }
         } catch (Exception e) {
