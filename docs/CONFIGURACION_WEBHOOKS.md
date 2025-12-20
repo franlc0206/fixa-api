@@ -8,9 +8,13 @@ Entrá a tu panel de aplicaciones en [Mercado Pago Developers](https://www.merca
 ### 2. Configurar el Endpoint
 Hacé clic en **"Crear nuevo"** o editá tu aplicación **Fix** y completá los datos:
 
-- **URL de producción**: `https://api.tu-dominio.com/api/public/mercadopago/webhook`
+- **URL de Webhook (Dashboard MP)**: `https://api.fixe.com.ar/api/public/mercadopago/webhook`
   > [!IMPORTANT]
-  > Reemplazá `tu-dominio.com` por la URL real de tu servidor (donde está corriendo la API).
+  > Esta URL va en el panel de Mercado Pago. Es para comunicación Servidor a Servidor.
+
+- **URL de Retorno (Redirección FE)**: `https://fixe.com.ar/backoffice/suscripcion/ready`
+  > [!NOTE]
+  > Esta URL es a donde el navegador del usuario vuelve después de pagar. Es una ruta de tu Frontend (React).
 - **Eventos a suscribir**:
     - [x] **Suscripciones** (Preapproval) -> Es el más importante para el flujo de planes.
     - [x] **Pagos** (Payments) -> Opcional, pero recomendado para logs.
