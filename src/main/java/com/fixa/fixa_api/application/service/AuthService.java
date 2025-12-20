@@ -25,17 +25,23 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmpleadoRepositoryPort empleadoPort;
     private final UsuarioEmpresaRepositoryPort usuarioEmpresaPort;
+    private final com.fixa.fixa_api.domain.repository.RefreshTokenRepositoryPort refreshTokenPort;
+    private final com.fixa.fixa_api.infrastructure.security.JwtTokenProvider jwtTokenProvider;
 
     public AuthService(UsuarioRepositoryPort usuarioPort,
-                       PasswordEncoder passwordEncoder,
-                       AuthenticationManager authenticationManager,
-                       EmpleadoRepositoryPort empleadoPort,
-                       UsuarioEmpresaRepositoryPort usuarioEmpresaPort) {
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            EmpleadoRepositoryPort empleadoPort,
+            UsuarioEmpresaRepositoryPort usuarioEmpresaPort,
+            com.fixa.fixa_api.domain.repository.RefreshTokenRepositoryPort refreshTokenPort,
+            com.fixa.fixa_api.infrastructure.security.JwtTokenProvider jwtTokenProvider) {
         this.usuarioPort = usuarioPort;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.empleadoPort = empleadoPort;
         this.usuarioEmpresaPort = usuarioEmpresaPort;
+        this.refreshTokenPort = refreshTokenPort;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     public Usuario register(String nombre, String apellido, String email, String telefono, String rawPassword) {
@@ -57,7 +63,8 @@ public class AuthService {
     }
 
     public Usuario login(String email, String password) {
-        Authentication auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+        Authentication auth = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(email, password));
         if (!auth.isAuthenticated()) {
             throw new IllegalArgumentException("Credenciales inválidas");
         }
@@ -104,8 +111,7 @@ public class AuthService {
         });
 
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(usuario.getEmail(), currentPassword)
-        );
+                new UsernamePasswordAuthenticationToken(usuario.getEmail(), currentPassword));
         if (!auth.isAuthenticated()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
@@ -125,20 +131,68 @@ public class AuthService {
         return usuarioPort.save(usuario);
     }
 
+    public com.fixa.fixa_api.domain.model.RefreshToken createRefreshToken(Usuario usuario) {
+        // Borrar tokens antiguos del usuario (opcional, para mantener 1 sesión activa o
+        // manejar rotación)
+        refreshTokenPort.deleteByUsuarioId(usuario.getId());
+
+        String token = jwtTokenProvider.generateRefreshToken(usuario);
+        java.time.Instant expiry = java.time.Instant.now().plusMillis(jwtTokenProvider.getRefreshExpirationMs());
+
+        com.fixa.fixa_api.domain.model.RefreshToken rt = com.fixa.fixa_api.domain.model.RefreshToken.builder()
+                .usuarioId(usuario.getId())
+                .token(token)
+                .expiryDate(expiry)
+                .build();
+
+        return refreshTokenPort.save(rt);
+    }
+
+    public com.fixa.fixa_api.infrastructure.in.web.dto.LoginResponse refresh(String refreshToken) {
+        return refreshTokenPort.findByToken(refreshToken)
+                .map(rt -> {
+                    // Validar expiración
+                    if (rt.getExpiryDate().isBefore(java.time.Instant.now())) {
+                        refreshTokenPort.deleteByUsuarioId(rt.getUsuarioId());
+                        throw new ApiException(HttpStatus.UNAUTHORIZED, "Refresh Token expirado");
+                    }
+
+                    // Obtener usuario
+                    Usuario usuario = usuarioPort.findById(rt.getUsuarioId())
+                            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+                    // Generar nuevos tokens
+                    String newAccessToken = jwtTokenProvider.generateToken(usuario);
+                    com.fixa.fixa_api.domain.model.RefreshToken newRefreshToken = createRefreshToken(usuario);
+
+                    return new com.fixa.fixa_api.infrastructure.in.web.dto.LoginResponse(
+                            usuario.getId(),
+                            usuario.getEmail(),
+                            usuario.getRol(),
+                            newAccessToken,
+                            newRefreshToken.getToken());
+                })
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Refresh Token inválido"));
+    }
+
     private void vincularUsuarioConEmpresasPorEmail(Usuario usuario) {
-        if (usuario == null) return;
+        if (usuario == null)
+            return;
         String email = usuario.getEmail();
-        if (email == null || email.isBlank()) return;
+        if (email == null || email.isBlank())
+            return;
 
         List<Empleado> empleados = empleadoPort.findActivosSinUsuarioPorEmail(email);
-        if (empleados.isEmpty()) return;
+        if (empleados.isEmpty())
+            return;
 
         for (Empleado empleado : empleados) {
             empleado.setUsuarioId(usuario.getId());
             empleadoPort.save(empleado);
 
             Long empresaId = empleado.getEmpresaId();
-            if (empresaId == null) continue;
+            if (empresaId == null)
+                continue;
 
             boolean existe = usuarioEmpresaPort.existsByUsuarioAndEmpresa(usuario.getId(), empresaId);
             if (!existe) {
