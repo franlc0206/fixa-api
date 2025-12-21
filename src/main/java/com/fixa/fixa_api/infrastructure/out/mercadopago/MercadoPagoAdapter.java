@@ -29,37 +29,16 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
-        String url = "https://api.mercadopago.com/preapproval";
+        // Construimos el link manualmente para evitar errores de API y usar el flujo de
+        // redireccion simple.
+        // Formato:
+        // https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=...
+        // Agregamos external_reference y back_url como query params standard.
 
-        Map<String, Object> body = new HashMap<>();
-        body.putAll(Map.of(
-                "preapproval_plan_id", mpPlanId,
-                "payer_email", userEmail,
-                "back_url", backUrl,
-                "external_reference", userId + ":" + planId));
-
-        // Nota: Mercado Pago Preapproval API puede variar según la versión.
-        // Usaremos una estructura simplificada basada en la documentación de
-        // suscripciones.
-
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(accessToken);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-            // Uso una referencia de tipo para evitar avisos de casting crudo
-            org.springframework.core.ParameterizedTypeReference<Map<String, Object>> typeRef = new org.springframework.core.ParameterizedTypeReference<>() {
-            };
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST, entity, typeRef);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (String) response.getBody().get("init_point");
-            }
-        } catch (Exception e) {
-            log.error("Error creating MP preapproval: {}", e.getMessage());
-        }
-        return null;
+        return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
+                + "&payer_email=" + userEmail
+                + "&external_reference=" + userId + ":" + planId
+                + "&back_url=" + backUrl;
     }
 
     @Override
