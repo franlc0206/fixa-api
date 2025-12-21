@@ -36,8 +36,7 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
                 "preapproval_plan_id", mpPlanId,
                 "payer_email", userEmail,
                 "back_url", backUrl,
-                "external_reference", userId + ":" + planId,
-                "status", "pending"));
+                "external_reference", userId + ":" + planId));
 
         // Nota: Mercado Pago Preapproval API puede variar según la versión.
         // Usaremos una estructura simplificada basada en la documentación de
