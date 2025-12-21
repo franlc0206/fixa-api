@@ -29,19 +29,15 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
-        String url = "https://api.mercadopago.com/preapproval_plan/" + mpPlanId + "/preapproval";
+        String url = "https://api.mercadopago.com/preapproval";
 
         Map<String, Object> body = new HashMap<>();
         body.putAll(Map.of(
+                "preapproval_plan_id", mpPlanId,
                 "payer_email", userEmail,
                 "back_url", backUrl,
                 "external_reference", userId + ":" + planId,
-                "reason", "Suscripción Fixe - Plan " + planId,
-                "auto_recurring", Map.of(
-                        "frequency", 1,
-                        "frequency_type", "months",
-                        "transaction_amount", 0, // El precio lo toma del plan de MP si mandamos esto
-                        "currency_id", "ARS")));
+                "status", "pending"));
 
         // Nota: Mercado Pago Preapproval API puede variar según la versión.
         // Usaremos una estructura simplificada basada en la documentación de
