@@ -55,6 +55,13 @@ public class BackofficeAccessFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Excepciones: Rutas de backoffice que NO requieren empresa previa
+        if (path.equals("/api/backoffice/mercadopago/init") ||
+                (path.equals("/api/backoffice/empresa") && request.getMethod().equalsIgnoreCase("POST"))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // 2. Dejar que Spring Security autentique primero (el filtro JWT va antes)
         // Pero como este filtro se ejecuta en la cadena, necesitamos saber si el
         // usuario está autenticado.
