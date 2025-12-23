@@ -76,6 +76,12 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
         return executeGet(url);
     }
 
+    @Override
+    public Optional<Map<String, Object>> getPreapprovalPlan(String mpPlanId) {
+        String url = "https://api.mercadopago.com/preapproval_plan/" + mpPlanId;
+        return executeGet(url);
+    }
+
     private Optional<Map<String, Object>> executeGet(String url) {
         try {
             HttpHeaders headers = new HttpHeaders();
