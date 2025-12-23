@@ -189,22 +189,30 @@ public class MercadoPagoSuscripcionService {
         } else {
             // FALLBACK: Si no hay external_reference, buscamos por email
             log.warn("Suscripción {} sin external_reference. Intentando recuperación por payer email.", preapprovalId);
+            log.debug("Payload de suscripción completo: {}", mpData);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> payer = (Map<String, Object>) mpData.get("payer");
-            if (payer != null && payer.get("email") != null) {
-                String email = String.valueOf(payer.get("email"));
-                Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
-                if (userOpt.isPresent()) {
-                    usuarioId = userOpt.get().getId();
-                    // Como no sabemos el plan exacto, buscamos el de produccion o el primero de
-                    // pago
-                    // Para simplificar ahora, si no viene en el ref, tomamos el default que es el 2
-                    // (Starter)
-                    planId = 2L;
-                    log.info("Usuario recuperado por email ({}): ID {}. Usando Plan ID {} predeterminado.", email,
-                            usuarioId, planId);
+            if (payer != null) {
+                log.debug("Objeto payer encontrado: {}", payer);
+                Object emailObj = payer.get("email");
+                if (emailObj != null) {
+                    String email = String.valueOf(emailObj).toLowerCase().trim();
+                    log.info("Buscando usuario por email: '{}'", email);
+                    Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        usuarioId = userOpt.get().getId();
+                        planId = 2L; // Default Starter
+                        log.info("Usuario recuperado por email ({}): ID {}. Usando Plan ID {} predeterminado.", email,
+                                usuarioId, planId);
+                    } else {
+                        log.warn("No se encontró ningún usuario en la DB con el email: '{}'", email);
+                    }
+                } else {
+                    log.error("El objeto payer existe pero no tiene el campo 'email'.");
                 }
+            } else {
+                log.error("No se encontró el objeto 'payer' en los datos de la suscripción.");
             }
         }
 
