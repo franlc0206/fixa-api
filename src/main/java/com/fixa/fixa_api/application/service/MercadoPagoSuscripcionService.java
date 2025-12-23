@@ -71,7 +71,8 @@ public class MercadoPagoSuscripcionService {
     }
 
     @Transactional
-    public void procesarWebhook(Map<String, Object> payload, String signature, String requestId) {
+    public void procesarWebhook(Map<String, Object> payload, Map<String, String> queryParams, String signature,
+            String requestId) {
         String idNotif = null;
         if (payload.get("id") != null) {
             idNotif = String.valueOf(payload.get("id"));
@@ -87,7 +88,14 @@ public class MercadoPagoSuscripcionService {
 
         // Validar firma si el secret está configurado
         if (webhookSecret != null && !webhookSecret.isBlank()) {
-            if (!validarFirma(idNotif, signature, requestId)) {
+            // El ID para el manifest de la firma DEBE venir del query param (data.id) o del
+            // body (id) prioritariamente segun MP
+            String idParaFirma = queryParams != null ? queryParams.get("data.id") : null;
+            if (idParaFirma == null) {
+                idParaFirma = idNotif;
+            }
+
+            if (!validarFirma(idParaFirma, signature, requestId)) {
                 log.warn("Firma de webhook inválida para notificación {}. Ignorando.", idNotif);
                 return;
             }
@@ -201,8 +209,11 @@ public class MercadoPagoSuscripcionService {
                 return false;
             }
 
+            // Normalizar ID: si es alfanumérico debe ir en minúsculas en el manifest
+            String normalizedId = id.toLowerCase();
+
             // Construir el manifest: id:[id];request-id:[x-request-id];ts:[ts];
-            String manifest = String.format("id:%s;request-id:%s;ts:%s;", id, requestId, ts);
+            String manifest = String.format("id:%s;request-id:%s;ts:%s;", normalizedId, requestId, ts);
             log.debug("Manifest generado para validación: {}", manifest);
 
             // Generar HMAC SHA256

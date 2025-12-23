@@ -31,10 +31,11 @@ public class MercadoPagoController {
     @PostMapping("/public/mercadopago/webhook")
     public ResponseEntity<Void> receiveWebhook(
             @RequestBody Map<String, Object> payload,
+            @RequestParam Map<String, String> allParams,
             @RequestHeader(value = "x-signature", required = false) String signature,
             @RequestHeader(value = "x-request-id", required = false) String requestId) {
 
-        mpService.procesarWebhook(payload, signature, requestId);
+        mpService.procesarWebhook(payload, allParams, signature, requestId);
         return ResponseEntity.ok().build();
     }
 }
