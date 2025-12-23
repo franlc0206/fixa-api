@@ -73,27 +73,36 @@ public class MercadoPagoSuscripcionService {
     @Transactional
     public void procesarWebhook(Map<String, Object> payload, Map<String, String> queryParams, String signature,
             String requestId) {
-        String idNotif = null;
-        if (payload.get("id") != null) {
-            idNotif = String.valueOf(payload.get("id"));
-        } else if (payload.get("data") != null && payload.get("data") instanceof Map
-                && ((Map<?, ?>) payload.get("data")).get("id") != null) {
-            idNotif = String.valueOf(((Map<?, ?>) payload.get("data")).get("id"));
+        // ID de la notificación (para log e idempotencia)
+        String idNotif = payload.get("id") != null ? String.valueOf(payload.get("id")) : null;
+
+        // ID del recurso (para buscar en la API: el pago o la suscripción)
+        String resourceId = null;
+        if (payload.get("data") != null && payload.get("data") instanceof Map) {
+            Map<?, ?> data = (Map<?, ?>) payload.get("data");
+            resourceId = data.get("id") != null ? String.valueOf(data.get("id")) : null;
         }
 
         String type = (String) payload.get("type");
 
-        if (idNotif == null || type == null)
+        if (idNotif == null || type == null) {
+            log.warn("Notificación inválida recibida: idNotif o type ausentes. Payload: {}", payload);
             return;
+        }
+
+        // 1. Idempotencia: Evitar procesar lo mismo dos veces
+        if (notificationLogRepository.existsById(idNotif)) {
+            log.info("Notificación {} ya procesada. Saltando.", idNotif);
+            return;
+        }
 
         // Validar firma si el secret está configurado
         if (webhookSecret != null && !webhookSecret.isBlank()) {
             // El ID para el manifest de la firma DEBE venir del query param (data.id) o del
-            // body (id) prioritariamente segun MP
-            String idParaFirma = queryParams != null ? queryParams.get("data.id") : null;
-            if (idParaFirma == null) {
+            // body (data.id) segun documentacion V2
+            String idParaFirma = queryParams != null ? queryParams.get("data.id") : resourceId;
+            if (idParaFirma == null)
                 idParaFirma = idNotif;
-            }
 
             if (!validarFirma(idParaFirma, signature, requestId)) {
                 log.warn("Firma de webhook inválida para notificación {}. Ignorando.", idNotif);
@@ -101,25 +110,53 @@ public class MercadoPagoSuscripcionService {
             }
         }
 
-        // 1. Idempotencia: Verificar si ya procesamos esta notificación
-        if (notificationLogRepository.existsById(idNotif)) {
-            log.info("Notificación {} ya procesada anteriormente.", idNotif);
-            return;
+        // 2. Procesar según tipo usando el resourceId
+        try {
+            if ("subscription_preapproval".equals(type) || "preapproval".equals(type)) {
+                if (resourceId != null) {
+                    procesarPreapproval(resourceId);
+                } else {
+                    log.warn("Tipo preapproval recibido sin resourceId en payload.");
+                }
+            } else if ("subscription_authorized_payment".equals(type)) {
+                log.info(
+                        "Gatillo de pago de suscripción recibido (authorized_payment): {}. Procesando suscripcion asociada...",
+                        resourceId);
+                procesarAuthorizedPayment(resourceId);
+            } else if ("payment".equals(type)) {
+                log.info("Pago recibido: {}. Solo logueamos por ahora.", resourceId);
+            } else {
+                log.info("Evento de tipo {} recibido y guardado, sin accion asociada.", type);
+            }
+
+            // SOLO GUARDAMOS SI LLEGAMOS ACA (si no hubo excepcion)
+            // Esto permite que MP reintente si hubo un error 400/500 antes.
+            MpNotificationLogEntity logEntry = new MpNotificationLogEntity();
+            logEntry.setNotificationId(idNotif);
+            logEntry.setProcessedAt(LocalDateTime.now());
+            logEntry.setPayload(payload.toString());
+            notificationLogRepository.save(logEntry);
+
+        } catch (Exception e) {
+            log.error("Error procesando webhook {} de tipo {}: {}", idNotif, type, e.getMessage(), e);
+            // No guardamos en el log, para que MP reintente la notificacion
         }
+    }
 
-        // Registrar notificación
-        MpNotificationLogEntity logEntry = new MpNotificationLogEntity();
-        logEntry.setNotificationId(idNotif);
-        logEntry.setProcessedAt(LocalDateTime.now());
-        logEntry.setPayload(payload.toString());
-        notificationLogRepository.save(logEntry);
+    private void procesarAuthorizedPayment(String paymentId) {
+        // En authorized_payment, el data.id es el pago. Debemos buscar la suscripcion
+        // (preapproval_id)
+        Optional<Map<String, Object>> paymentDataOpt = mercadoPagoPort.getPayment(paymentId);
+        if (paymentDataOpt.isEmpty())
+            return;
 
-        // 2. Procesar según tipo
-        if ("subscription_preapproval".equals(type) || "preapproval".equals(type)) {
-            procesarPreapproval(idNotif);
-        } else if ("payment".equals(type)) {
-            // Podríamos procesar pagos individuales si fuera necesario
-            log.info("Pago recibido: {}. Solo logueamos por ahora.", idNotif);
+        Map<String, Object> paymentData = paymentDataOpt.get();
+        Object preapprovalIdObj = paymentData.get("preapproval_id");
+        if (preapprovalIdObj != null) {
+            log.info("Encontrada suscripcion {} asociada al pago {}. Procesando...", preapprovalIdObj, paymentId);
+            procesarPreapproval(String.valueOf(preapprovalIdObj));
+        } else {
+            log.warn("El pago {} no tiene una suscripcion (preapproval_id) asociada.", paymentId);
         }
     }
 
@@ -130,10 +167,12 @@ public class MercadoPagoSuscripcionService {
 
         Map<String, Object> mpData = mpDataOpt.get();
         String status = (String) mpData.get("status");
+        log.info("Datos de suscripción {} recuperados. Status: {}. ExternalRef: {}",
+                preapprovalId, status, mpData.get("external_reference"));
 
         // Solo procesamos si está autorizado (pagado/activo)
         if (!"authorized".equals(status)) {
-            log.info("Suscripción {} en estado {}. No se requiere acción.", preapprovalId, status);
+            log.info("Suscripción {} en estado {}. No se requiere acción de alta.", preapprovalId, status);
             return;
         }
 
