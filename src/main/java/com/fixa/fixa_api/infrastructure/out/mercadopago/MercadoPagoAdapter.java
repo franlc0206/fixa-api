@@ -29,12 +29,41 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
-        // Construimos el link manualmente para evitar errores de API y usar el flujo de
-        // redireccion simple.
-        // Formato:
-        // https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=...
-        // Agregamos external_reference y back_url como query params standard.
+        String url = "https://api.mercadopago.com/preapproval";
 
+        Map<String, Object> body = new HashMap<>();
+        body.put("preapproval_plan_id", mpPlanId);
+        body.put("payer_email", userEmail);
+        body.put("back_url", backUrl);
+        body.put("reason", "Suscripción Fixe");
+        body.put("external_reference", userId + ":" + planId);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            // Usamos un ParameterizedTypeReference para evitar warnings de tipos crudos
+            org.springframework.core.ParameterizedTypeReference<Map<String, Object>> typeRef = new org.springframework.core.ParameterizedTypeReference<>() {
+            };
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST, entity, typeRef);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String initPoint = (String) response.getBody().get("init_point");
+                if (initPoint != null && !initPoint.isBlank()) {
+                    log.info("Link de suscripcion creado via API para usuario {}: {}", userId, initPoint);
+                    return initPoint;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error al crear preapproval via API (usando fallback manual): {}", e.getMessage());
+        }
+
+        // Fallback al metodo manual si falla la API (Nota: esto no disparara webhooks
+        // correctamente en algunos flujos)
         return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
                 + "&payer_email=" + userEmail
                 + "&external_reference=" + userId + ":" + planId
