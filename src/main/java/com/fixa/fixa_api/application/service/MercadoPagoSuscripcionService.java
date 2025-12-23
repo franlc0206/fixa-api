@@ -75,14 +75,19 @@ public class MercadoPagoSuscripcionService {
         return link;
     }
 
-    @Transactional
+    /**
+     * Punto de entrada del Webhook.
+     * Importante: NO Marcamos todo como @Transactional aquí para poder capturar
+     * el error y persistir el estado FAILED sin que se haga rollback de la
+     * notificación misma.
+     */
     public void procesarWebhook(Map<String, Object> payload, Map<String, String> queryParams, String signature,
             String requestId) {
         String idNotif = payload.get("id") != null ? String.valueOf(payload.get("id")) : null;
         String type = (String) payload.get("type");
 
         if (idNotif == null || type == null) {
-            log.warn("Notificación inválida recibida: idNotif o type ausentes. Payload: {}", payload);
+            log.warn("Notificación inválida recibida: idNotif o type ausentes.");
             return;
         }
 
@@ -91,25 +96,20 @@ public class MercadoPagoSuscripcionService {
             return;
         }
 
-        // Extraer Resource ID
         String resourceId = null;
         if (payload.get("data") != null && payload.get("data") instanceof Map) {
             Map<?, ?> data = (Map<?, ?>) payload.get("data");
             resourceId = data.get("id") != null ? String.valueOf(data.get("id")) : null;
         }
 
-        // Validar firma si corresponde
         if (webhookSecret != null && !webhookSecret.isBlank()) {
             String idParaFirma = queryParams != null ? queryParams.get("data.id") : resourceId;
             if (idParaFirma == null)
                 idParaFirma = idNotif;
-            if (!validarFirma(idParaFirma, signature, requestId)) {
-                log.warn("Firma inválida para notificación {}. Ignorando.", idNotif);
+            if (!validarFirma(idParaFirma, signature, requestId))
                 return;
-            }
         }
 
-        // Determinar si es "importante" para seguimiento y retry
         boolean esImportante = "subscription_preapproval".equals(type) ||
                 "preapproval".equals(type) ||
                 "subscription_authorized_payment".equals(type) ||
@@ -117,48 +117,62 @@ public class MercadoPagoSuscripcionService {
 
         MpScheduledNotificationEntity scheduled = null;
         if (esImportante) {
-            scheduled = new MpScheduledNotificationEntity();
-            scheduled.setNotificationId(idNotif);
-            scheduled.setResourceId(resourceId);
-            scheduled.setTopic(type);
-            scheduled.setPayload(payload.toString());
-            scheduled.setStatus("PENDING");
-            scheduled = scheduledNotificationRepository.save(scheduled);
+            scheduled = registrarInicioNotificacion(idNotif, resourceId, type, payload.toString());
         }
 
         try {
+            // EJECUCIÓN DEL PROCESAMIENTO (Esta parte sí es transaccional internamente)
             ejecutarRuteoNotificacion(type, resourceId, payload);
 
-            // Si llegamos acá, éxito
             if (scheduled != null) {
-                scheduled.setStatus("PROCESSED");
-                scheduledNotificationRepository.save(scheduled);
+                marcarNotificacionExitosa(scheduled, idNotif, payload.toString());
             }
-
-            // Guardar log simple para cumplimiento de idempotencia
-            MpNotificationLogEntity logEntry = new MpNotificationLogEntity();
-            logEntry.setNotificationId(idNotif);
-            logEntry.setProcessedAt(LocalDateTime.now());
-            logEntry.setPayload(payload.toString());
-            notificationLogRepository.save(logEntry);
 
         } catch (Exception e) {
             log.error("Error procesando webhook {} (type: {}): {}", idNotif, type, e.getMessage());
             if (scheduled != null) {
-                scheduled.setStatus("FAILED");
-                scheduled.setLastError(e.getMessage());
-                scheduled.setRetryCount(scheduled.getRetryCount() + 1);
-                // Próximo intento en 5 min (exponencial en el scheduler si se quiere)
-                scheduled.setNextAttempt(LocalDateTime.now().plusMinutes(5));
-                scheduledNotificationRepository.save(scheduled);
+                marcarNotificacionFallida(scheduled, e.getMessage());
             }
-            // NO relanzamos la excepción para devolver 200 a MP y manejar nosotros el retry
         }
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public MpScheduledNotificationEntity registrarInicioNotificacion(String idNotif, String resourceId, String type,
+            String payloadStr) {
+        MpScheduledNotificationEntity scheduled = new MpScheduledNotificationEntity();
+        scheduled.setNotificationId(idNotif);
+        scheduled.setResourceId(resourceId);
+        scheduled.setTopic(type);
+        scheduled.setPayload(payloadStr);
+        scheduled.setStatus("PENDING");
+        return scheduledNotificationRepository.save(scheduled);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void marcarNotificacionExitosa(MpScheduledNotificationEntity scheduled, String idNotif, String payloadStr) {
+        scheduled.setStatus("PROCESSED");
+        scheduledNotificationRepository.save(scheduled);
+
+        MpNotificationLogEntity logEntry = new MpNotificationLogEntity();
+        logEntry.setNotificationId(idNotif);
+        logEntry.setProcessedAt(LocalDateTime.now());
+        logEntry.setPayload(payloadStr);
+        notificationLogRepository.save(logEntry);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void marcarNotificacionFallida(MpScheduledNotificationEntity scheduled, String errorMsg) {
+        scheduled.setStatus("FAILED");
+        scheduled.setLastError(errorMsg);
+        scheduled.setRetryCount(scheduled.getRetryCount() + 1);
+        scheduled.setNextAttempt(LocalDateTime.now().plusMinutes(5));
+        scheduledNotificationRepository.save(scheduled);
     }
 
     /**
      * Lógica de ruteo interna, compartida por Webhook y Scheduler de Retry.
      */
+    @Transactional
     public void ejecutarRuteoNotificacion(String type, String resourceId, Map<String, Object> fullPayload) {
         if ("subscription_preapproval".equals(type) || "preapproval".equals(type)) {
             if (resourceId != null) {
