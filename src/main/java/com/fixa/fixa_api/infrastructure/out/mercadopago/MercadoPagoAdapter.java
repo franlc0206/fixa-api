@@ -33,12 +33,15 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
         // que preserve el external_reference de forma robusta.
         String url = "https://api.mercadopago.com/preapproval";
 
-        Map<String, Object> request = Map.of(
-                "preapproval_plan_id", mpPlanId,
-                "payer_email", userEmail,
-                "external_reference", userId + ":" + planId,
-                "back_url", backUrl,
-                "status", "pending");
+        Map<String, Object> request = new java.util.HashMap<>();
+        request.put("preapproval_plan_id", mpPlanId);
+        request.put("payer_email", userEmail);
+        request.put("external_reference", userId + ":" + planId);
+        request.put("back_url", backUrl);
+        request.put("status", "pending");
+        request.put("metadata", Map.of(
+                "user_id", userId,
+                "plan_id", planId));
 
         try {
             HttpHeaders headers = new HttpHeaders();
