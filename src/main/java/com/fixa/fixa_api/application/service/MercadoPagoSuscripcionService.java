@@ -112,8 +112,7 @@ public class MercadoPagoSuscripcionService {
 
         boolean esImportante = "subscription_preapproval".equals(type) ||
                 "preapproval".equals(type) ||
-                "subscription_authorized_payment".equals(type) ||
-                "payment".equals(type);
+                "subscription_authorized_payment".equals(type);
 
         MpScheduledNotificationEntity scheduled = null;
         if (esImportante) {
