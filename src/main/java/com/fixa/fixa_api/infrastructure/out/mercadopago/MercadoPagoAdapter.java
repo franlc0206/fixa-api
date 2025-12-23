@@ -57,6 +57,13 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
         return executeGet(url);
     }
 
+    @Override
+    public Optional<Map<String, Object>> getAuthorizedPayment(String paymentId) {
+        // Los pagos de suscripciones se consultan en este endpoint específico
+        String url = "https://api.mercadopago.com/authorized_payments/" + paymentId;
+        return executeGet(url);
+    }
+
     private Optional<Map<String, Object>> executeGet(String url) {
         try {
             HttpHeaders headers = new HttpHeaders();

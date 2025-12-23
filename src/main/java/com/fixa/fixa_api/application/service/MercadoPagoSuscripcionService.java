@@ -144,11 +144,12 @@ public class MercadoPagoSuscripcionService {
     }
 
     private void procesarAuthorizedPayment(String paymentId) {
-        // En authorized_payment, el data.id es el pago. Debemos buscar la suscripcion
-        // (preapproval_id)
-        Optional<Map<String, Object>> paymentDataOpt = mercadoPagoPort.getPayment(paymentId);
-        if (paymentDataOpt.isEmpty())
+        // Los pagos de suscripciones se consultan en /authorized_payments
+        Optional<Map<String, Object>> paymentDataOpt = mercadoPagoPort.getAuthorizedPayment(paymentId);
+        if (paymentDataOpt.isEmpty()) {
+            log.warn("No se pudo recuperar información del authorized_payment {}", paymentId);
             return;
+        }
 
         Map<String, Object> paymentData = paymentDataOpt.get();
         Object preapprovalIdObj = paymentData.get("preapproval_id");
@@ -156,7 +157,8 @@ public class MercadoPagoSuscripcionService {
             log.info("Encontrada suscripcion {} asociada al pago {}. Procesando...", preapprovalIdObj, paymentId);
             procesarPreapproval(String.valueOf(preapprovalIdObj));
         } else {
-            log.warn("El pago {} no tiene una suscripcion (preapproval_id) asociada.", paymentId);
+            log.warn("El pago {} no tiene una suscripcion (preapproval_id) asociada. Detalles: {}", paymentId,
+                    paymentData);
         }
     }
 
@@ -177,14 +179,39 @@ public class MercadoPagoSuscripcionService {
         }
 
         String externalRef = (String) mpData.get("external_reference");
-        if (externalRef == null || !externalRef.contains(":")) {
-            log.error("Suscripción {} no tiene external_reference válido.", preapprovalId);
-            return;
+        Long usuarioId = null;
+        Long planId = null;
+
+        if (externalRef != null && externalRef.contains(":")) {
+            String[] parts = externalRef.split(":");
+            usuarioId = Long.parseLong(parts[0]);
+            planId = Long.parseLong(parts[1]);
+        } else {
+            // FALLBACK: Si no hay external_reference, buscamos por email
+            log.warn("Suscripción {} sin external_reference. Intentando recuperación por payer email.", preapprovalId);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payer = (Map<String, Object>) mpData.get("payer");
+            if (payer != null && payer.get("email") != null) {
+                String email = String.valueOf(payer.get("email"));
+                Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    usuarioId = userOpt.get().getId();
+                    // Como no sabemos el plan exacto, buscamos el de produccion o el primero de
+                    // pago
+                    // Para simplificar ahora, si no viene en el ref, tomamos el default que es el 2
+                    // (Starter)
+                    planId = 2L;
+                    log.info("Usuario recuperado por email ({}): ID {}. Usando Plan ID {} predeterminado.", email,
+                            usuarioId, planId);
+                }
+            }
         }
 
-        String[] parts = externalRef.split(":");
-        Long usuarioId = Long.parseLong(parts[0]);
-        Long planId = Long.parseLong(parts[1]);
+        if (usuarioId == null) {
+            log.error("No se pudo identificar al usuario para la suscripción {}.", preapprovalId);
+            return;
+        }
 
         finalizarAltaSuscripcion(usuarioId, planId, preapprovalId);
     }
