@@ -5,11 +5,9 @@ import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.CategoriaEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.EmpresaEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.UsuarioEntity;
+import com.fixa.fixa_api.infrastructure.out.persistence.entity.UsuarioEmpresaEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.mapper.EmpresaMapper;
-import com.fixa.fixa_api.infrastructure.out.persistence.repository.CategoriaJpaRepository;
-import com.fixa.fixa_api.infrastructure.out.persistence.repository.EmpresaJpaRepository;
-import com.fixa.fixa_api.infrastructure.out.persistence.repository.PlanJpaRepository;
-import com.fixa.fixa_api.infrastructure.out.persistence.repository.UsuarioJpaRepository;
+import com.fixa.fixa_api.infrastructure.out.persistence.repository.*;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,13 +21,16 @@ public class EmpresaRepositoryAdapter implements EmpresaRepositoryPort {
     private final CategoriaJpaRepository categoriaRepo;
     private final UsuarioJpaRepository usuarioRepo;
     private final PlanJpaRepository planRepo;
+    private final UsuarioEmpresaJpaRepository usuarioEmpresaRepo;
 
     public EmpresaRepositoryAdapter(EmpresaJpaRepository empresaRepo, CategoriaJpaRepository categoriaRepo,
-            UsuarioJpaRepository usuarioRepo, PlanJpaRepository planRepo) {
+            UsuarioJpaRepository usuarioRepo, PlanJpaRepository planRepo,
+            UsuarioEmpresaJpaRepository usuarioEmpresaRepo) {
         this.empresaRepo = empresaRepo;
         this.categoriaRepo = categoriaRepo;
         this.usuarioRepo = usuarioRepo;
         this.planRepo = planRepo;
+        this.usuarioEmpresaRepo = usuarioEmpresaRepo;
     }
 
     @Override
@@ -70,6 +71,21 @@ public class EmpresaRepositoryAdapter implements EmpresaRepositoryPort {
 
         EmpresaMapper.copyToEntity(empresa, entity, cat, admin, plan);
         EmpresaEntity saved = empresaRepo.save(entity);
+
+        // Vincular usuario como OWNER si es una empresa nueva o el admin cambió
+        if (admin != null) {
+            boolean existeVinculo = usuarioEmpresaRepo.findByUsuario_IdAndEmpresa_Id(admin.getId(), saved.getId())
+                    .isPresent();
+            if (!existeVinculo) {
+                UsuarioEmpresaEntity vinculo = new UsuarioEmpresaEntity();
+                vinculo.setUsuario(admin);
+                vinculo.setEmpresa(saved);
+                vinculo.setRolEmpresa("OWNER");
+                vinculo.setActivo(true);
+                usuarioEmpresaRepo.save(vinculo);
+            }
+        }
+
         return EmpresaMapper.toDomain(saved);
     }
 
