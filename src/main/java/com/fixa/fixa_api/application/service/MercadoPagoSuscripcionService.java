@@ -176,8 +176,10 @@ public class MercadoPagoSuscripcionService {
     }
 
     private boolean validarFirma(String id, String signatureHeader, String requestId) {
-        if (signatureHeader == null || requestId == null)
+        if (signatureHeader == null || requestId == null) {
+            log.warn("Firma o Request ID ausentes. Signature: {}, RequestId: {}", signatureHeader, requestId);
             return false;
+        }
 
         try {
             // Extraer ts y v1 del header x-signature (formato: ts=xxx,v1=yyy)
@@ -194,11 +196,14 @@ public class MercadoPagoSuscripcionService {
                     v1 = pair[1].trim();
             }
 
-            if (ts == null || v1 == null)
+            if (ts == null || v1 == null) {
+                log.warn("No se pudo extraer ts o v1 del header x-signature: {}", signatureHeader);
                 return false;
+            }
 
             // Construir el manifest: id:[id];request-id:[x-request-id];ts:[ts];
             String manifest = String.format("id:%s;request-id:%s;ts:%s;", id, requestId, ts);
+            log.debug("Manifest generado para validación: {}", manifest);
 
             // Generar HMAC SHA256
             javax.crypto.Mac sha256_HMAC = javax.crypto.Mac.getInstance("HmacSHA256");
@@ -213,10 +218,17 @@ public class MercadoPagoSuscripcionService {
             }
             String generatedSignature = sb.toString();
 
-            return generatedSignature.equals(v1);
+            boolean isValid = generatedSignature.equals(v1);
+            if (!isValid) {
+                log.warn("Firma inválida. Manifest: {}, v1(recibida): {}, hmac(generada): {}", manifest, v1,
+                        generatedSignature);
+                // Tip: Si hmac es totalmente distinto, el secret está mal.
+            }
+
+            return isValid;
 
         } catch (Exception e) {
-            log.error("Error validando firma de Mercado Pago: {}", e.getMessage());
+            log.error("Error crítico validando firma de Mercado Pago: {}", e.getMessage());
             return false;
         }
     }
