@@ -189,30 +189,44 @@ public class MercadoPagoSuscripcionService {
         } else {
             // FALLBACK: Si no hay external_reference, buscamos por email
             log.warn("Suscripción {} sin external_reference. Intentando recuperación por payer email.", preapprovalId);
-            log.debug("Payload de suscripción completo: {}", mpData);
+            log.info("Payload completo de la suscripción de MP: {}", mpData);
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> payer = (Map<String, Object>) mpData.get("payer");
-            if (payer != null) {
-                log.debug("Objeto payer encontrado: {}", payer);
-                Object emailObj = payer.get("email");
-                if (emailObj != null) {
-                    String email = String.valueOf(emailObj).toLowerCase().trim();
-                    log.info("Buscando usuario por email: '{}'", email);
-                    Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
-                    if (userOpt.isPresent()) {
-                        usuarioId = userOpt.get().getId();
-                        planId = 2L; // Default Starter
-                        log.info("Usuario recuperado por email ({}): ID {}. Usando Plan ID {} predeterminado.", email,
-                                usuarioId, planId);
-                    } else {
-                        log.warn("No se encontró ningún usuario en la DB con el email: '{}'", email);
-                    }
+            String email = null;
+            // 1. Intentar desde payer_email (root)
+            if (mpData.get("payer_email") != null) {
+                email = String.valueOf(mpData.get("payer_email"));
+                log.debug("Email encontrado en 'payer_email' (root): {}", email);
+            }
+
+            // 2. Intentar desde payer object (nested)
+            if (email == null && mpData.get("payer") != null) {
+                log.debug("Intentando buscar email en objeto 'payer' anidado.");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> payer = (Map<String, Object>) mpData.get("payer");
+                if (payer.get("email") != null) {
+                    email = String.valueOf(payer.get("email"));
+                    log.debug("Email encontrado en 'payer.email' (anidado): {}", email);
                 } else {
-                    log.error("El objeto payer existe pero no tiene el campo 'email'.");
+                    log.warn("Objeto 'payer' existe pero no contiene el campo 'email'.");
+                }
+            } else if (email == null) {
+                log.warn("No se encontró el objeto 'payer' en los datos de la suscripción.");
+            }
+
+            if (email != null) {
+                email = email.toLowerCase().trim();
+                log.info("Buscando usuario por email recuperado: '{}'", email);
+                Optional<Usuario> userOpt = usuarioRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    usuarioId = userOpt.get().getId();
+                    planId = 2L; // Default Starter
+                    log.info("Usuario recuperado por email ({}): ID {}. Usando Plan ID {} predeterminado.", email,
+                            usuarioId, planId);
+                } else {
+                    log.warn("No se encontró ningún usuario en la DB con el email: '{}'", email);
                 }
             } else {
-                log.error("No se encontró el objeto 'payer' en los datos de la suscripción.");
+                log.error("No se encontró email del pagador en ningún campo (payer_email ni payer.email).");
             }
         }
 
