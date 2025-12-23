@@ -37,37 +37,47 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
         body.put("back_url", backUrl);
         body.put("reason", "Suscripción Fixe");
         body.put("external_reference", userId + ":" + planId);
+        body.put("status", "pending"); // Obligatorio para generar init_point sin tarjeta
 
         try {
+            log.info("Iniciando creacion de preapproval para usuario {}. Plan: {}. Body: {}", userId, mpPlanId, body);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            // Usamos un ParameterizedTypeReference para evitar warnings de tipos crudos
             org.springframework.core.ParameterizedTypeReference<Map<String, Object>> typeRef = new org.springframework.core.ParameterizedTypeReference<>() {
             };
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST, entity, typeRef);
 
+            log.info("Respuesta de MP (Preapproval): Status={}, Body={}", response.getStatusCode(), response.getBody());
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 String initPoint = (String) response.getBody().get("init_point");
                 if (initPoint != null && !initPoint.isBlank()) {
-                    log.info("Link de suscripcion creado via API para usuario {}: {}", userId, initPoint);
+                    log.info("Link de suscripcion creado exitosamente: {}", initPoint);
                     return initPoint;
                 }
             }
         } catch (Exception e) {
-            log.error("Error al crear preapproval via API (usando fallback manual): {}", e.getMessage());
+            log.error("Error al crear preapproval via API: {}", e.getMessage());
+            if (e instanceof org.springframework.web.client.HttpStatusCodeException) {
+                log.error("Cuerpo del error MP: {}",
+                        ((org.springframework.web.client.HttpStatusCodeException) e).getResponseBodyAsString());
+            }
         }
 
         // Fallback al metodo manual si falla la API (Nota: esto no disparara webhooks
         // correctamente en algunos flujos)
-        return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
+        String fallbackLink = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
                 + "&payer_email=" + userEmail
                 + "&external_reference=" + userId + ":" + planId
                 + "&back_url=" + backUrl;
+        log.warn("Usando fallback manual para link de suscripcion: {}", fallbackLink);
+        return fallbackLink;
     }
 
     @Override
