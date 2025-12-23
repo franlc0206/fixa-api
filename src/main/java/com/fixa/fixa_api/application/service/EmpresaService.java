@@ -141,7 +141,7 @@ public class EmpresaService {
     public Empresa guardar(Empresa empresa) {
         // Generar slug automáticamente si no está presente
         if (empresa.getSlug() == null || empresa.getSlug().isBlank()) {
-            String slug = generarSlug(empresa.getNombre());
+            String slug = generarSlugUnico(empresa.getNombre());
             empresa.setSlug(slug);
         }
 
@@ -196,6 +196,19 @@ public class EmpresaService {
         empresaPort.save(e);
 
         return Optional.of(suscripcion);
+    }
+
+    private String generarSlugUnico(String nombre) {
+        String baseSlug = generarSlug(nombre);
+        String currentSlug = baseSlug;
+        int counter = 1;
+
+        while (empresaPort.findBySlug(currentSlug).isPresent()) {
+            currentSlug = baseSlug + "-" + counter;
+            counter++;
+        }
+
+        return currentSlug;
     }
 
     /**
