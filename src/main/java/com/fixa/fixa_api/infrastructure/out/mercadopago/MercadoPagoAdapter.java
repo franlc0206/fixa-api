@@ -32,16 +32,29 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
         // card_token_id.
         // Por lo tanto, para Hosted Checkout debemos usar el link manual.
 
-        String externalRef = userId + ":" + planId;
-        String checkoutUrl = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
-                + "&payer_email=" + userEmail
-                + "&external_reference=" + externalRef
-                + "&external_id=" + externalRef // Variación común en MP
-                + "&client_id=" + externalRef // Variación común en MP
-                + "&back_url=" + backUrl;
+        try {
+            String encodedRef = java.net.URLEncoder.encode(userId + ":" + planId,
+                    java.nio.charset.StandardCharsets.UTF_8);
+            String encodedEmail = java.net.URLEncoder.encode(userEmail, java.nio.charset.StandardCharsets.UTF_8);
+            String encodedBackUrl = java.net.URLEncoder.encode(backUrl, java.nio.charset.StandardCharsets.UTF_8);
 
-        log.info("Generando link de suscripción manual (Hosted Checkout) para usuario {}: {}", userId, checkoutUrl);
-        return checkoutUrl;
+            String checkoutUrl = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
+                    + "&payer_email=" + encodedEmail
+                    + "&external_reference=" + encodedRef
+                    + "&external_id=" + encodedRef
+                    + "&client_id=" + encodedRef
+                    + "&back_url=" + encodedBackUrl;
+
+            log.info("Generando link de suscripción manual (URL Encoded) para usuario {}: {}", userId, checkoutUrl);
+            return checkoutUrl;
+        } catch (Exception e) {
+            log.error("Error codificando URLs para link de suscripción: {}", e.getMessage());
+            // Fallback sin codificar (riesgoso pero mejor que nada)
+            return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
+                    + "&payer_email=" + userEmail
+                    + "&external_reference=" + userId + ":" + planId
+                    + "&back_url=" + backUrl;
+        }
     }
 
     @Override

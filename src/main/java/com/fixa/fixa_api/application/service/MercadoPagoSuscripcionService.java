@@ -145,27 +145,44 @@ public class MercadoPagoSuscripcionService {
 
     private void procesarAuthorizedPayment(String paymentId) {
         // Los pagos de suscripciones se consultan en /authorized_payments
-        Optional<Map<String, Object>> paymentDataOpt = mercadoPagoPort.getAuthorizedPayment(paymentId);
-        if (paymentDataOpt.isEmpty()) {
+        Optional<Map<String, Object>> authPaymentDataOpt = mercadoPagoPort.getAuthorizedPayment(paymentId);
+        if (authPaymentDataOpt.isEmpty()) {
             log.warn("No se pudo recuperar información del authorized_payment {}", paymentId);
             return;
         }
 
-        Map<String, Object> paymentData = paymentDataOpt.get();
-        log.info("Analizando authorized_payment {} para recuperar info de usuario. Payload: {}", paymentId,
-                paymentData);
+        Map<String, Object> authPaymentData = authPaymentDataOpt.get();
+        log.info("Analizando authorized_payment {} para recuperar info de usuario.", paymentId);
 
-        String preapprovalId = paymentData.get("preapproval_id") != null
-                ? String.valueOf(paymentData.get("preapproval_id"))
-                : null;
-        String externalRef = paymentData.get("external_reference") != null
-                ? String.valueOf(paymentData.get("external_reference"))
+        String preapprovalId = authPaymentData.get("preapproval_id") != null
+                ? String.valueOf(authPaymentData.get("preapproval_id"))
                 : null;
 
-        // Intentar recuperar email del pagador desde el pago
+        // RECUPERACIÓN PROFUNDA: El authorized_payment a veces no tiene el externalRef,
+        // pero contiene un objeto 'payment' con el ID del pago real de la API V1.
+        Map<String, Object> finalPaymentData = authPaymentData;
+        if (authPaymentData.get("payment") != null && authPaymentData.get("payment") instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> innerPayment = (Map<String, Object>) authPaymentData.get("payment");
+            if (innerPayment.get("id") != null) {
+                String realPaymentId = String.valueOf(innerPayment.get("id"));
+                log.info("Buscando pago real {} en la API V1 para recuperar metadatos...", realPaymentId);
+                Optional<Map<String, Object>> v1Payment = mercadoPagoPort.getPayment(realPaymentId);
+                if (v1Payment.isPresent()) {
+                    finalPaymentData = v1Payment.get();
+                    log.debug("Datos del pago V1 recuperados: {}", finalPaymentData);
+                }
+            }
+        }
+
+        String externalRef = finalPaymentData.get("external_reference") != null
+                ? String.valueOf(finalPaymentData.get("external_reference"))
+                : null;
+
+        // Intentar recuperar email del pagador
         String email = null;
-        if (paymentData.get("payer") != null && paymentData.get("payer") instanceof Map) {
-            Map<?, ?> payer = (Map<?, ?>) paymentData.get("payer");
+        if (finalPaymentData.get("payer") != null && finalPaymentData.get("payer") instanceof Map) {
+            Map<?, ?> payer = (Map<?, ?>) finalPaymentData.get("payer");
             if (payer.get("email") != null) {
                 email = String.valueOf(payer.get("email"));
             }
