@@ -152,13 +152,63 @@ public class MercadoPagoSuscripcionService {
         }
 
         Map<String, Object> paymentData = paymentDataOpt.get();
-        Object preapprovalIdObj = paymentData.get("preapproval_id");
-        if (preapprovalIdObj != null) {
-            log.info("Encontrada suscripcion {} asociada al pago {}. Procesando...", preapprovalIdObj, paymentId);
-            procesarPreapproval(String.valueOf(preapprovalIdObj));
+        log.info("Analizando authorized_payment {} para recuperar info de usuario. Payload: {}", paymentId,
+                paymentData);
+
+        String preapprovalId = paymentData.get("preapproval_id") != null
+                ? String.valueOf(paymentData.get("preapproval_id"))
+                : null;
+        String externalRef = paymentData.get("external_reference") != null
+                ? String.valueOf(paymentData.get("external_reference"))
+                : null;
+
+        // Intentar recuperar email del pagador desde el pago
+        String email = null;
+        if (paymentData.get("payer") != null && paymentData.get("payer") instanceof Map) {
+            Map<?, ?> payer = (Map<?, ?>) paymentData.get("payer");
+            if (payer.get("email") != null) {
+                email = String.valueOf(payer.get("email"));
+            }
+        }
+
+        Long usuarioId = null;
+        Long planId = null;
+
+        if (externalRef != null && externalRef.contains(":")) {
+            try {
+                String[] parts = externalRef.split(":");
+                usuarioId = Long.parseLong(parts[0]);
+                planId = Long.parseLong(parts[1]);
+                log.info("Usuario {} y Plan {} recuperados exitosamente desde el PAGO {}", usuarioId, planId,
+                        paymentId);
+            } catch (Exception e) {
+                log.warn("Error parseando external_reference del pago: {}. Error: {}", externalRef, e.getMessage());
+            }
+        } else if (email != null && !email.isBlank()) {
+            log.info("No hay external_reference en el pago {}. Buscando usuario por email del pagador: {}", paymentId,
+                    email);
+            Optional<Usuario> userOpt = usuarioRepository.findByEmail(email.toLowerCase().trim());
+            if (userOpt.isPresent()) {
+                usuarioId = userOpt.get().getId();
+                planId = 2L; // Default Starter
+                log.info("Usuario {} recuperado por email desde el PAGO {}", usuarioId, paymentId);
+            }
+        }
+
+        // Si logramos identificar al usuario por el pago, procedemos directamente
+        if (usuarioId != null && preapprovalId != null) {
+            log.info("Identificación exitosa vía pago {}. Finalizando alta para suscripción {}.", paymentId,
+                    preapprovalId);
+            finalizarAltaSuscripcion(usuarioId, planId, preapprovalId);
+            return;
+        }
+
+        // Si no, caemos en el flujo estándar de procesar la suscripción
+        if (preapprovalId != null) {
+            log.info("No se halló referencia en pago {}. Consultando suscripción {}...", paymentId, preapprovalId);
+            procesarPreapproval(preapprovalId);
         } else {
-            log.warn("El pago {} no tiene una suscripcion (preapproval_id) asociada. Detalles: {}", paymentId,
-                    paymentData);
+            log.warn("El pago {} no contiene preapproval_id ni información de usuario suficiente.", paymentId);
         }
     }
 

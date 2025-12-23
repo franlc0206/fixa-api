@@ -28,50 +28,20 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
-        // En lugar de construir el link manual, usamos el API /preapproval para obtener
-        // un init_point
-        // que preserve el external_reference de forma robusta.
-        String url = "https://api.mercadopago.com/preapproval";
+        // En producción, el API POST /preapproval con preapproval_plan_id requiere
+        // card_token_id.
+        // Por lo tanto, para Hosted Checkout debemos usar el link manual.
 
-        Map<String, Object> request = new java.util.HashMap<>();
-        request.put("preapproval_plan_id", mpPlanId);
-        request.put("payer_email", userEmail);
-        request.put("external_reference", userId + ":" + planId);
-        request.put("back_url", backUrl);
-        request.put("status", "pending");
-        request.put("metadata", Map.of(
-                "user_id", userId,
-                "plan_id", planId));
-
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
-
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST, entity,
-                    new org.springframework.core.ParameterizedTypeReference<>() {
-                    });
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String initPoint = (String) response.getBody().get("init_point");
-                if (initPoint != null) {
-                    log.info("Link de suscripción (init_point) generado exitosamente para usuario {}: {}", userId,
-                            initPoint);
-                    return initPoint;
-                }
-            }
-            log.error("Respuesta inesperada de MP al crear preapproval: {}", response.getBody());
-        } catch (Exception e) {
-            log.error("Error llamando a la API de MP para crear link: {}", e.getMessage());
-        }
-
-        // Fallback al sistema anterior solo si falla la API, aunque es menos robusto
-        log.warn("Error usando API de MP, usando link manual como fallback.");
-        return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
+        String externalRef = userId + ":" + planId;
+        String checkoutUrl = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
                 + "&payer_email=" + userEmail
-                + "&external_reference=" + userId + ":" + planId
+                + "&external_reference=" + externalRef
+                + "&external_id=" + externalRef // Variación común en MP
+                + "&client_id=" + externalRef // Variación común en MP
                 + "&back_url=" + backUrl;
+
+        log.info("Generando link de suscripción manual (Hosted Checkout) para usuario {}: {}", userId, checkoutUrl);
+        return checkoutUrl;
     }
 
     @Override
