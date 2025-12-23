@@ -8,5 +8,8 @@ import java.util.Optional;
 
 public interface EmpresaJpaRepository extends JpaRepository<EmpresaEntity, Long> {
     List<EmpresaEntity> findByVisibilidadPublicaTrue();
+
     Optional<EmpresaEntity> findBySlug(String slug);
+
+    Optional<EmpresaEntity> findByUsuarioAdminId(Long usuarioId);
 }

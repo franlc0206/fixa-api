@@ -8,7 +8,9 @@ import com.fixa.fixa_api.domain.repository.UsuarioRepositoryPort;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.out.mercadopago.MercadoPagoPort;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.MpNotificationLogEntity;
+import com.fixa.fixa_api.infrastructure.out.persistence.entity.MpScheduledNotificationEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpNotificationLogJpaRepository;
+import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpScheduledNotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,7 @@ public class MercadoPagoSuscripcionService {
 
     private final MercadoPagoPort mercadoPagoPort;
     private final MpNotificationLogJpaRepository notificationLogRepository;
+    private final MpScheduledNotificationRepository scheduledNotificationRepository;
     private final UsuarioRepositoryPort usuarioRepository;
     private final PlanRepositoryPort planRepository;
     private final EmpresaService empresaService;
@@ -36,12 +39,14 @@ public class MercadoPagoSuscripcionService {
 
     public MercadoPagoSuscripcionService(MercadoPagoPort mercadoPagoPort,
             MpNotificationLogJpaRepository notificationLogRepository,
+            MpScheduledNotificationRepository scheduledNotificationRepository,
             UsuarioRepositoryPort usuarioRepository,
             PlanRepositoryPort planRepository,
             EmpresaService empresaService,
             SuscripcionService suscripcionService) {
         this.mercadoPagoPort = mercadoPagoPort;
         this.notificationLogRepository = notificationLogRepository;
+        this.scheduledNotificationRepository = scheduledNotificationRepository;
         this.usuarioRepository = usuarioRepository;
         this.planRepository = planRepository;
         this.empresaService = empresaService;
@@ -73,16 +78,7 @@ public class MercadoPagoSuscripcionService {
     @Transactional
     public void procesarWebhook(Map<String, Object> payload, Map<String, String> queryParams, String signature,
             String requestId) {
-        // ID de la notificación (para log e idempotencia)
         String idNotif = payload.get("id") != null ? String.valueOf(payload.get("id")) : null;
-
-        // ID del recurso (para buscar en la API: el pago o la suscripción)
-        String resourceId = null;
-        if (payload.get("data") != null && payload.get("data") instanceof Map) {
-            Map<?, ?> data = (Map<?, ?>) payload.get("data");
-            resourceId = data.get("id") != null ? String.valueOf(data.get("id")) : null;
-        }
-
         String type = (String) payload.get("type");
 
         if (idNotif == null || type == null) {
@@ -90,47 +86,56 @@ public class MercadoPagoSuscripcionService {
             return;
         }
 
-        // 1. Idempotencia: Evitar procesar lo mismo dos veces
         if (notificationLogRepository.existsById(idNotif)) {
             log.info("Notificación {} ya procesada. Saltando.", idNotif);
             return;
         }
 
-        // Validar firma si el secret está configurado
+        // Extraer Resource ID
+        String resourceId = null;
+        if (payload.get("data") != null && payload.get("data") instanceof Map) {
+            Map<?, ?> data = (Map<?, ?>) payload.get("data");
+            resourceId = data.get("id") != null ? String.valueOf(data.get("id")) : null;
+        }
+
+        // Validar firma si corresponde
         if (webhookSecret != null && !webhookSecret.isBlank()) {
-            // El ID para el manifest de la firma DEBE venir del query param (data.id) o del
-            // body (data.id) segun documentacion V2
             String idParaFirma = queryParams != null ? queryParams.get("data.id") : resourceId;
             if (idParaFirma == null)
                 idParaFirma = idNotif;
-
             if (!validarFirma(idParaFirma, signature, requestId)) {
-                log.warn("Firma de webhook inválida para notificación {}. Ignorando.", idNotif);
+                log.warn("Firma inválida para notificación {}. Ignorando.", idNotif);
                 return;
             }
         }
 
-        // 2. Procesar según tipo usando el resourceId
+        // Determinar si es "importante" para seguimiento y retry
+        boolean esImportante = "subscription_preapproval".equals(type) ||
+                "preapproval".equals(type) ||
+                "subscription_authorized_payment".equals(type) ||
+                "payment".equals(type);
+
+        MpScheduledNotificationEntity scheduled = null;
+        if (esImportante) {
+            scheduled = new MpScheduledNotificationEntity();
+            scheduled.setNotificationId(idNotif);
+            scheduled.setResourceId(resourceId);
+            scheduled.setTopic(type);
+            scheduled.setPayload(payload.toString());
+            scheduled.setStatus("PENDING");
+            scheduled = scheduledNotificationRepository.save(scheduled);
+        }
+
         try {
-            if ("subscription_preapproval".equals(type) || "preapproval".equals(type)) {
-                if (resourceId != null) {
-                    procesarPreapproval(resourceId);
-                } else {
-                    log.warn("Tipo preapproval recibido sin resourceId en payload.");
-                }
-            } else if ("subscription_authorized_payment".equals(type)) {
-                log.info(
-                        "Gatillo de pago de suscripción recibido (authorized_payment): {}. Procesando suscripcion asociada...",
-                        resourceId);
-                procesarAuthorizedPayment(resourceId);
-            } else if ("payment".equals(type)) {
-                log.info("Pago recibido: {}. Solo logueamos por ahora.", resourceId);
-            } else {
-                log.info("Evento de tipo {} recibido y guardado, sin accion asociada.", type);
+            ejecutarRuteoNotificacion(type, resourceId, payload);
+
+            // Si llegamos acá, éxito
+            if (scheduled != null) {
+                scheduled.setStatus("PROCESSED");
+                scheduledNotificationRepository.save(scheduled);
             }
 
-            // SOLO GUARDAMOS SI LLEGAMOS ACA (si no hubo excepcion)
-            // Esto permite que MP reintente si hubo un error 400/500 antes.
+            // Guardar log simple para cumplimiento de idempotencia
             MpNotificationLogEntity logEntry = new MpNotificationLogEntity();
             logEntry.setNotificationId(idNotif);
             logEntry.setProcessedAt(LocalDateTime.now());
@@ -138,8 +143,36 @@ public class MercadoPagoSuscripcionService {
             notificationLogRepository.save(logEntry);
 
         } catch (Exception e) {
-            log.error("Error procesando webhook {} de tipo {}: {}", idNotif, type, e.getMessage(), e);
-            // No guardamos en el log, para que MP reintente la notificacion
+            log.error("Error procesando webhook {} (type: {}): {}", idNotif, type, e.getMessage());
+            if (scheduled != null) {
+                scheduled.setStatus("FAILED");
+                scheduled.setLastError(e.getMessage());
+                scheduled.setRetryCount(scheduled.getRetryCount() + 1);
+                // Próximo intento en 5 min (exponencial en el scheduler si se quiere)
+                scheduled.setNextAttempt(LocalDateTime.now().plusMinutes(5));
+                scheduledNotificationRepository.save(scheduled);
+            }
+            // NO relanzamos la excepción para devolver 200 a MP y manejar nosotros el retry
+        }
+    }
+
+    /**
+     * Lógica de ruteo interna, compartida por Webhook y Scheduler de Retry.
+     */
+    public void ejecutarRuteoNotificacion(String type, String resourceId, Map<String, Object> fullPayload) {
+        if ("subscription_preapproval".equals(type) || "preapproval".equals(type)) {
+            if (resourceId != null) {
+                procesarPreapproval(resourceId);
+            } else {
+                log.warn("Tipo preapproval recibido sin resourceId.");
+            }
+        } else if ("subscription_authorized_payment".equals(type)) {
+            log.info("Procesando pago de suscripción (authorized_payment): {}...", resourceId);
+            procesarAuthorizedPayment(resourceId);
+        } else if ("payment".equals(type)) {
+            log.info("Pago individual recibido: {}. Solo logueamos por ahora.", resourceId);
+        } else {
+            log.info("Evento de tipo {} recibido sin acción asociada.", type);
         }
     }
 
@@ -315,20 +348,36 @@ public class MercadoPagoSuscripcionService {
         finalizarAltaSuscripcion(usuarioId, planId, preapprovalId);
     }
 
-    private void finalizarAltaSuscripcion(Long usuarioId, Long planId, String externalId) {
+    private void finalizarAltaSuscripcion(Long usuarioId, Long planId, String preapprovalId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-        if (usuario == null)
+        if (usuario == null) {
+            log.error("Usuario {} no encontrado al finalizar alta.", usuarioId);
             return;
+        }
 
         Plan plan = planRepository.findById(planId).orElse(null);
-        if (plan == null)
+        if (plan == null) {
+            log.error("Plan {} no encontrado al finalizar alta.", planId);
             return;
+        }
 
-        log.info("Finalizando alta de suscripción para usuario {} y plan {}.", usuarioId, planId);
+        log.info("Finalizando alta de suscripción para usuario {} (Plan {}).", usuarioId, planId);
 
-        // 1. Crear Empresa
+        // 1. Verificación de Idempotencia: ¿Ya tiene empresa?
+        Optional<Empresa> empresaExistente = empresaService.buscarPorAdmin(usuarioId);
+        if (empresaExistente.isPresent()) {
+            Empresa e = empresaExistente.get();
+            log.info("Usuario {} ya posee la empresa {}. Actualizando plan...", usuarioId, e.getId());
+            e.setPlanActualId(planId);
+            empresaService.actualizar(e);
+            suscripcionService.asignarPlan(e.getId(), planId, plan.getPrecio());
+            return;
+        }
+
+        // 2. Si no tiene, Crear Empresa Nueva
         Empresa empresa = new Empresa();
-        empresa.setNombre("Nueva Empresa " + usuario.getNombre());
+        empresa.setUsuarioAdminId(usuarioId); // Asociación CRÍTICA
+        empresa.setNombre("Nueva Empresa " + (usuario.getNombre() != null ? usuario.getNombre() : ""));
         empresa.setEmail(usuario.getEmail());
         empresa.setTelefono(usuario.getTelefono());
         empresa.setActivo(true);
@@ -337,15 +386,14 @@ public class MercadoPagoSuscripcionService {
 
         Empresa guardada = empresaService.guardar(empresa);
 
-        // 2. Actualizar Usuario y Vínculo (EmpresaService.guardar ya hace parte de
-        // esto, pero aseguramos OWNER)
-        // Por ahora, asumimos que el usuario que compra es el dueño.
-        // Implementar lógica de UsuarioEmpresa si es necesario.
-
         // 3. Asignar Plan (SuscripcionService)
+        // Nota: empresaService.guardar ya asigna el plan 1 por defecto en su lógica
+        // interna (V1).
+        // Sobreescribimos con el plan de la suscripción.
         suscripcionService.asignarPlan(guardada.getId(), planId, plan.getPrecio());
 
-        log.info("Empresa {} creada y plan {} asignado exitosamente.", guardada.getId(), planId);
+        log.info("Empresa {} creada y plan {} asignado exitosamente al usuario {}.", guardada.getId(), planId,
+                usuarioId);
     }
 
     private boolean validarFirma(String id, String signatureHeader, String requestId) {

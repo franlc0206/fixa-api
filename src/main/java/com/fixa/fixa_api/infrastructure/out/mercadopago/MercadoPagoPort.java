@@ -11,4 +11,6 @@ public interface MercadoPagoPort {
     Optional<Map<String, Object>> getPayment(String paymentId);
 
     Optional<Map<String, Object>> getAuthorizedPayment(String paymentId);
+
+    Optional<Map<String, Object>> getPreapprovalPlan(String mpPlanId);
 }

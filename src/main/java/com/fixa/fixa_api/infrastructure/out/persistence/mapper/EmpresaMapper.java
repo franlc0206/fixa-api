@@ -3,6 +3,7 @@ package com.fixa.fixa_api.infrastructure.out.persistence.mapper;
 import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.CategoriaEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.EmpresaEntity;
+import com.fixa.fixa_api.infrastructure.out.persistence.entity.UsuarioEntity;
 
 public class EmpresaMapper {
 
@@ -33,7 +34,8 @@ public class EmpresaMapper {
         return d;
     }
 
-    public static void copyToEntity(Empresa d, EmpresaEntity e, CategoriaEntity categoria) {
+    public static void copyToEntity(Empresa d, EmpresaEntity e, CategoriaEntity categoria, UsuarioEntity admin,
+            com.fixa.fixa_api.infrastructure.out.persistence.entity.PlanEntity plan) {
         e.setNombre(d.getNombre());
         e.setSlug(d.getSlug());
         e.setDescripcion(d.getDescripcion());
@@ -49,5 +51,7 @@ public class EmpresaMapper {
         e.setVisibilidadPublica(d.isVisibilidadPublica());
         e.setActivo(d.isActivo());
         e.setCategoria(categoria);
+        e.setUsuarioAdmin(admin);
+        e.setPlanActual(plan);
     }
 }
