@@ -57,7 +57,7 @@ public class MercadoPagoSuscripcionService {
         this.notificationService = notificationService;
     }
 
-    public String iniciarSuscripcion(Long usuarioId, Long planId) {
+    public String iniciarSuscripcion(Long usuarioId, Long planId, String payerEmail) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
@@ -69,7 +69,9 @@ public class MercadoPagoSuscripcionService {
                     "El plan seleccionado no tiene un ID de Mercado Pago configurado.");
         }
 
-        String link = mercadoPagoPort.createPreapprovalLink(usuario.getEmail(), usuarioId, planId,
+        String emailToUse = (payerEmail != null && !payerEmail.isBlank()) ? payerEmail : usuario.getEmail();
+
+        String link = mercadoPagoPort.createPreapprovalLink(emailToUse, usuarioId, planId,
                 plan.getMercadopagoPlanId());
         if (link == null) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,

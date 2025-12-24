@@ -20,11 +20,12 @@ public class MercadoPagoController {
     }
 
     @PostMapping("/backoffice/mercadopago/init")
-    public ResponseEntity<Map<String, String>> iniciarSuscripcion(@RequestParam Long planId) {
+    public ResponseEntity<Map<String, String>> iniciarSuscripcion(@RequestParam Long planId,
+            @RequestParam(required = false) String payerEmail) {
         Long userId = currentUserService.getCurrentUserId()
                 .orElseThrow(() -> new RuntimeException("Usuario no autenticado"));
 
-        String url = mpService.iniciarSuscripcion(userId, planId);
+        String url = mpService.iniciarSuscripcion(userId, planId, payerEmail);
         return ResponseEntity.ok(Map.of("checkoutUrl", url));
     }
 

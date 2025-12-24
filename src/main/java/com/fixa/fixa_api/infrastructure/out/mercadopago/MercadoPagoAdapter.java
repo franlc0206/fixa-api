@@ -84,8 +84,12 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
             body.put("back_url", computedBackUrl);
             body.put("status", "pending");
 
-            // payer_email removed to allow payment from any MP account; reconciliation uses
-            // external_reference.
+            // payer_email es requerido por Mercado Pago para suscripciones pendientes,
+            // aunque el usuario luego pueda loguearse con otro mail.
+            // Se debe enviar un mail válido.
+            if (userEmail != null && !userEmail.isBlank()) {
+                body.put("payer_email", userEmail);
+            }
 
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
