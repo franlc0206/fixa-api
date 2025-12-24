@@ -25,7 +25,7 @@ public class DataSeeder {
     public CommandLineRunner seedSuperadmin(UsuarioJpaRepository repo, PasswordEncoder encoder) {
         return args -> {
             String email = superadminEmail;
-            if (repo.findByEmail(email).isEmpty()) {
+            if (repo.findByEmailIgnoreCase(email).isEmpty()) {
                 UsuarioEntity u = new UsuarioEntity();
                 u.setNombre("Super");
                 u.setApellido("Admin");

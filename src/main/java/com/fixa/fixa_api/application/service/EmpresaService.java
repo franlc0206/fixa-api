@@ -19,7 +19,8 @@ public class EmpresaService {
     private final SuscripcionRepositoryPort suscripcionPort;
     private final SuscripcionService suscripcionService;
 
-    public EmpresaService(EmpresaRepositoryPort empresaPort, ServicioRepositoryPort servicioPort, SuscripcionRepositoryPort suscripcionPort, SuscripcionService suscripcionService) {
+    public EmpresaService(EmpresaRepositoryPort empresaPort, ServicioRepositoryPort servicioPort,
+            SuscripcionRepositoryPort suscripcionPort, SuscripcionService suscripcionService) {
         this.empresaPort = empresaPort;
         this.servicioPort = servicioPort;
         this.suscripcionPort = suscripcionPort;
@@ -34,11 +35,13 @@ public class EmpresaService {
         List<Empresa> base = listar(visibles);
         return base.stream()
                 .filter(e -> activo == null || e.isActivo() == activo)
-                .filter(e -> categoriaId == null || (e.getCategoriaId() != null && e.getCategoriaId().equals(categoriaId)))
+                .filter(e -> categoriaId == null
+                        || (e.getCategoriaId() != null && e.getCategoriaId().equals(categoriaId)))
                 .collect(Collectors.toList());
     }
 
-    public List<Empresa> listarConFiltrosPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page, Integer size) {
+    public List<Empresa> listarConFiltrosPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page,
+            Integer size) {
         List<Empresa> filtrado = listarConFiltros(visibles, activo, categoriaId);
         if (page == null || size == null || page < 0 || size <= 0)
             return filtrado;
@@ -48,7 +51,8 @@ public class EmpresaService {
     }
 
     /**
-     * Empresas públicas (visibles) y activas que además tienen una suscripción activa.
+     * Empresas públicas (visibles) y activas que además tienen una suscripción
+     * activa.
      */
     public List<Empresa> listarPublicasConSuscripcionActivaPaginado(Long categoriaId, Integer page, Integer size) {
         // visibles = true, activo = true
@@ -65,7 +69,8 @@ public class EmpresaService {
                 .collect(Collectors.toList());
     }
 
-    public List<Empresa> listarPublicasConSuscripcionActivaPaginado(Boolean visibles, Boolean activo, Long categoriaId, Integer page, Integer size) {
+    public List<Empresa> listarPublicasConSuscripcionActivaPaginado(Boolean visibles, Boolean activo, Long categoriaId,
+            Integer page, Integer size) {
         List<Empresa> filtrado = listarPublicasConSuscripcionActiva(visibles, activo, categoriaId);
         if (page == null || size == null || page < 0 || size <= 0)
             return filtrado;
@@ -74,7 +79,8 @@ public class EmpresaService {
         return filtrado.subList(from, to);
     }
 
-    public List<Empresa> listarPublicasPorCategoriaServicioPaginado(Long categoriaServicioId, Integer page, Integer size) {
+    public List<Empresa> listarPublicasPorCategoriaServicioPaginado(Long categoriaServicioId, Integer page,
+            Integer size) {
         List<Empresa> visibles = listar(true).stream()
                 .filter(Empresa::isActivo)
                 .collect(Collectors.toList());
@@ -124,10 +130,18 @@ public class EmpresaService {
         return empresaPort.findBySlug(slug);
     }
 
+    public Optional<Empresa> buscarPorAdmin(Long usuarioId) {
+        return empresaPort.findByUsuarioAdminId(usuarioId);
+    }
+
+    public Empresa actualizar(Empresa empresa) {
+        return empresaPort.save(empresa);
+    }
+
     public Empresa guardar(Empresa empresa) {
         // Generar slug automáticamente si no está presente
         if (empresa.getSlug() == null || empresa.getSlug().isBlank()) {
-            String slug = generarSlug(empresa.getNombre());
+            String slug = generarSlugUnico(empresa.getNombre());
             empresa.setSlug(slug);
         }
 
@@ -182,6 +196,19 @@ public class EmpresaService {
         empresaPort.save(e);
 
         return Optional.of(suscripcion);
+    }
+
+    private String generarSlugUnico(String nombre) {
+        String baseSlug = generarSlug(nombre);
+        String currentSlug = baseSlug;
+        int counter = 1;
+
+        while (empresaPort.findBySlug(currentSlug).isPresent()) {
+            currentSlug = baseSlug + "-" + counter;
+            counter++;
+        }
+
+        return currentSlug;
     }
 
     /**

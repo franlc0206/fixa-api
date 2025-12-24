@@ -17,6 +17,7 @@ public class PlanMapper {
         plan.setMaxTurnosMensuales(entity.getMaxTurnosMensuales());
         plan.setSoportePrioritario(entity.isSoportePrioritario());
         plan.setActivo(entity.isActivo());
+        plan.setMercadopagoPlanId(entity.getMercadopagoPlanId());
         return plan;
     }
 
@@ -32,6 +33,7 @@ public class PlanMapper {
         entity.setMaxTurnosMensuales(domain.getMaxTurnosMensuales());
         entity.setSoportePrioritario(domain.isSoportePrioritario());
         entity.setActivo(domain.isActivo());
+        entity.setMercadopagoPlanId(domain.getMercadopagoPlanId());
         return entity;
     }
 }

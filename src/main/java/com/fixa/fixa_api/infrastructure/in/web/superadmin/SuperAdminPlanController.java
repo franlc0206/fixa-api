@@ -48,12 +48,13 @@ public class SuperAdminPlanController {
         public int maxTurnosMensuales;
         public boolean soportePrioritario;
         public boolean activo = true;
+        public String mercadopagoPlanId;
     }
 
     @PostMapping
     public ResponseEntity<Plan> create(@Valid @RequestBody CreatePlanRequest req) {
         Plan saved = service.create(req.nombre, req.precio, req.maxEmpleados, req.maxServicios,
-                req.maxTurnosMensuales, req.soportePrioritario, req.activo);
+                req.maxTurnosMensuales, req.soportePrioritario, req.activo, req.mercadopagoPlanId);
         return ResponseEntity.ok(saved);
     }
 
@@ -65,12 +66,13 @@ public class SuperAdminPlanController {
         public Integer maxTurnosMensuales;
         public Boolean soportePrioritario;
         public Boolean activo;
+        public String mercadopagoPlanId;
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Plan> update(@PathVariable Long id, @RequestBody UpdatePlanRequest req) {
         return service.update(id, req.nombre, req.precio, req.maxEmpleados, req.maxServicios,
-                        req.maxTurnosMensuales, req.soportePrioritario, req.activo)
+                req.maxTurnosMensuales, req.soportePrioritario, req.activo, req.mercadopagoPlanId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

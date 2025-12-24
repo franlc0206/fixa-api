@@ -28,7 +28,7 @@ public class SuperAdminPlanService {
     }
 
     public Plan create(String nombre, BigDecimal precio, int maxEmpleados, int maxServicios,
-                       int maxTurnosMensuales, boolean soportePrioritario, boolean activo) {
+            int maxTurnosMensuales, boolean soportePrioritario, boolean activo, String mercadopagoPlanId) {
         validate(nombre, precio, maxEmpleados, maxServicios, maxTurnosMensuales);
         Plan p = new Plan();
         p.setNombre(nombre);
@@ -38,20 +38,30 @@ public class SuperAdminPlanService {
         p.setMaxTurnosMensuales(maxTurnosMensuales);
         p.setSoportePrioritario(soportePrioritario);
         p.setActivo(activo);
+        p.setMercadopagoPlanId(mercadopagoPlanId);
         return planPort.save(p);
     }
 
     public Optional<Plan> update(Long id, String nombre, BigDecimal precio, Integer maxEmpleados,
-                                 Integer maxServicios, Integer maxTurnosMensuales,
-                                 Boolean soportePrioritario, Boolean activo) {
+            Integer maxServicios, Integer maxTurnosMensuales,
+            Boolean soportePrioritario, Boolean activo, String mercadopagoPlanId) {
         return planPort.findById(id).map(p -> {
-            if (nombre != null) p.setNombre(nombre);
-            if (precio != null) p.setPrecio(precio);
-            if (maxEmpleados != null) p.setMaxEmpleados(maxEmpleados);
-            if (maxServicios != null) p.setMaxServicios(maxServicios);
-            if (maxTurnosMensuales != null) p.setMaxTurnosMensuales(maxTurnosMensuales);
-            if (soportePrioritario != null) p.setSoportePrioritario(soportePrioritario);
-            if (activo != null) p.setActivo(activo);
+            if (nombre != null)
+                p.setNombre(nombre);
+            if (precio != null)
+                p.setPrecio(precio);
+            if (maxEmpleados != null)
+                p.setMaxEmpleados(maxEmpleados);
+            if (maxServicios != null)
+                p.setMaxServicios(maxServicios);
+            if (maxTurnosMensuales != null)
+                p.setMaxTurnosMensuales(maxTurnosMensuales);
+            if (soportePrioritario != null)
+                p.setSoportePrioritario(soportePrioritario);
+            if (activo != null)
+                p.setActivo(activo);
+            if (mercadopagoPlanId != null)
+                p.setMercadopagoPlanId(mercadopagoPlanId);
             validate(p.getNombre(), p.getPrecio(), p.getMaxEmpleados(), p.getMaxServicios(), p.getMaxTurnosMensuales());
             return planPort.save(p);
         });
@@ -59,14 +69,16 @@ public class SuperAdminPlanService {
 
     public boolean activar(Long id, boolean activo) {
         Optional<Plan> opt = planPort.findById(id);
-        if (opt.isEmpty()) return false;
+        if (opt.isEmpty())
+            return false;
         Plan p = opt.get();
         p.setActivo(activo);
         planPort.save(p);
         return true;
     }
 
-    private void validate(String nombre, BigDecimal precio, int maxEmpleados, int maxServicios, int maxTurnosMensuales) {
+    private void validate(String nombre, BigDecimal precio, int maxEmpleados, int maxServicios,
+            int maxTurnosMensuales) {
         if (nombre == null || nombre.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "nombre requerido");
         }

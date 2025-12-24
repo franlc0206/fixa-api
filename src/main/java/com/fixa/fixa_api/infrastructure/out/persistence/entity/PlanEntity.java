@@ -33,4 +33,7 @@ public class PlanEntity {
 
     @Column(nullable = false)
     private boolean activo = true;
+
+    @Column(name = "mercadopago_plan_id", length = 100)
+    private String mercadopagoPlanId;
 }

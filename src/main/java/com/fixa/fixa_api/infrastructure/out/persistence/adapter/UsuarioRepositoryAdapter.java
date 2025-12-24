@@ -22,7 +22,7 @@ public class UsuarioRepositoryAdapter implements UsuarioRepositoryPort {
 
     @Override
     public Optional<Usuario> findByEmail(String email) {
-        return usuarioRepo.findByEmail(email).map(UsuarioMapper::toDomain);
+        return usuarioRepo.findByEmailIgnoreCase(email).map(UsuarioMapper::toDomain);
     }
 
     @Override
