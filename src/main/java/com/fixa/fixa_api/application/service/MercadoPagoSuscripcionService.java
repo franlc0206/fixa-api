@@ -11,6 +11,7 @@ import com.fixa.fixa_api.infrastructure.out.persistence.entity.MpNotificationLog
 import com.fixa.fixa_api.infrastructure.out.persistence.entity.MpScheduledNotificationEntity;
 import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpNotificationLogJpaRepository;
 import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpScheduledNotificationRepository;
+import com.fixa.fixa_api.domain.service.NotificationServicePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -33,6 +34,7 @@ public class MercadoPagoSuscripcionService {
     private final PlanRepositoryPort planRepository;
     private final EmpresaService empresaService;
     private final SuscripcionService suscripcionService;
+    private final NotificationServicePort notificationService;
 
     @org.springframework.beans.factory.annotation.Value("${mercadopago.webhook-secret:}")
     private String webhookSecret;
@@ -43,7 +45,8 @@ public class MercadoPagoSuscripcionService {
             UsuarioRepositoryPort usuarioRepository,
             PlanRepositoryPort planRepository,
             EmpresaService empresaService,
-            SuscripcionService suscripcionService) {
+            SuscripcionService suscripcionService,
+            NotificationServicePort notificationService) {
         this.mercadoPagoPort = mercadoPagoPort;
         this.notificationLogRepository = notificationLogRepository;
         this.scheduledNotificationRepository = scheduledNotificationRepository;
@@ -51,6 +54,7 @@ public class MercadoPagoSuscripcionService {
         this.planRepository = planRepository;
         this.empresaService = empresaService;
         this.suscripcionService = suscripcionService;
+        this.notificationService = notificationService;
     }
 
     public String iniciarSuscripcion(Long usuarioId, Long planId) {
@@ -407,6 +411,21 @@ public class MercadoPagoSuscripcionService {
 
         log.info("Empresa {} creada y plan {} asignado exitosamente al usuario {}.", guardada.getId(), planId,
                 usuarioId);
+
+        // 4. Enviar Email de Bienvenida / Confirmación
+        try {
+            String htmlTemplate = "<p>Hola <b>{{nombreUsuario}}</b>,</p>" +
+                    "<p>Tu empresa <b>{{nombreEmpresa}}</b> ha sido registrada exitosamente en Fixa.</p>" +
+                    "<p>Ya puedes acceder a tu panel de control para comenzar a gestionar tus turnos.</p>" +
+                    "<p>Ante cualquier duda, guarda este correo.</p>";
+
+            notificationService.sendEmail(usuario.getEmail(), htmlTemplate, java.util.Map.of(
+                    "nombreUsuario", usuario.getNombre() != null ? usuario.getNombre() : "Usuario",
+                    "nombreEmpresa", guardada.getNombre()));
+            log.info("Email de bienvenida enviado a {}", usuario.getEmail());
+        } catch (Exception e) {
+            log.error("Error enviando email de bienvenida al usuario {}: {}", usuarioId, e.getMessage());
+        }
     }
 
     private boolean validarFirma(String id, String signatureHeader, String requestId) {

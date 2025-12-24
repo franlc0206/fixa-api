@@ -28,33 +28,46 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
-        // En producción, el API POST /preapproval con preapproval_plan_id requiere
-        // card_token_id.
-        // Por lo tanto, para Hosted Checkout debemos usar el link manual.
-
+        // INTENTO 1: Crear vía API POST /preapproval (Recomendado para persistir
+        // external_reference)
         try {
-            String encodedRef = java.net.URLEncoder.encode(userId + ":" + planId,
-                    java.nio.charset.StandardCharsets.UTF_8);
-            String encodedEmail = java.net.URLEncoder.encode(userEmail, java.nio.charset.StandardCharsets.UTF_8);
-            String encodedBackUrl = java.net.URLEncoder.encode(backUrl, java.nio.charset.StandardCharsets.UTF_8);
+            String externalRef = userId + ":" + planId;
+            String computedBackUrl = (backUrl != null && !backUrl.isBlank()) ? backUrl : "https://fixe.com.ar";
 
-            String checkoutUrl = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
-                    + "&payer_email=" + encodedEmail
-                    + "&external_reference=" + encodedRef
-                    + "&external_id=" + encodedRef
-                    + "&client_id=" + encodedRef
-                    + "&back_url=" + encodedBackUrl;
+            // Construir JSON body
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("preapproval_plan_id", mpPlanId);
+            body.put("payer_email", userEmail);
+            body.put("external_reference", externalRef);
+            body.put("back_url", computedBackUrl);
+            body.put("status", "pending"); // Status pending genera el init_point para checkout
 
-            log.info("Generando link de suscripción manual (URL Encoded) para usuario {}: {}", userId, checkoutUrl);
-            return checkoutUrl;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(accessToken);
+
+            HttpEntity<java.util.Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            log.info("Intentando crear Preapproval vía API para usuario {} (Plan {})...", userId, mpPlanId);
+
+            ResponseEntity<java.util.Map> response = restTemplate.postForEntity(
+                    "https://api.mercadopago.com/preapproval",
+                    entity,
+                    java.util.Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                String initPoint = (String) response.getBody().get("init_point");
+                if (initPoint != null && !initPoint.isBlank()) {
+                    log.info("Preapproval API exitoso. Redirigiendo a: {}", initPoint);
+                    return initPoint;
+                }
+            }
         } catch (Exception e) {
-            log.error("Error codificando URLs para link de suscripción: {}", e.getMessage());
-            // Fallback sin codificar (riesgoso pero mejor que nada)
-            return "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=" + mpPlanId
-                    + "&payer_email=" + userEmail
-                    + "&external_reference=" + userId + ":" + planId
-                    + "&back_url=" + backUrl;
+            log.error("Fallo creación API Preapproval: {}", e.getMessage(), e);
+            throw new RuntimeException("Error creando suscripción en Mercado Pago: " + e.getMessage(), e);
         }
+
+        throw new RuntimeException("No se pudo obtener el link de suscripción de la respuesta de Mercado Pago.");
     }
 
     @Override
