@@ -37,7 +37,8 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
             // Construir JSON body
             java.util.Map<String, Object> body = new java.util.HashMap<>();
             body.put("preapproval_plan_id", mpPlanId);
-            body.put("payer_email", userEmail);
+            // body.put("payer_email", userEmail); // Comentado para evitar error
+            // card_token_id is required
             body.put("external_reference", externalRef);
             body.put("back_url", computedBackUrl);
             body.put("status", "pending"); // Status pending genera el init_point para checkout
