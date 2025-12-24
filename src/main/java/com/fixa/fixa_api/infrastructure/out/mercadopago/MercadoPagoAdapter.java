@@ -75,9 +75,14 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
             body.put("back_url", computedBackUrl);
             body.put("status", "pending");
 
-            if (userEmail != null && !userEmail.isBlank()) {
-                body.put("payer_email", userEmail);
-            }
+            // payer_email removido para permitir que el usuario pague con cualquier cuenta
+            // de MP,
+            // ya que la reconciliación se hace por external_reference.
+            /*
+             * if (userEmail != null && !userEmail.isBlank()) {
+             * body.put("payer_email", userEmail);
+             * }
+             */
 
             org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = new org.springframework.http.HttpEntity<>(
                     body, headers);
