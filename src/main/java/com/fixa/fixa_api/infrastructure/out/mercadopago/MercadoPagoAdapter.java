@@ -16,6 +16,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
 @Component
 public class MercadoPagoAdapter implements MercadoPagoPort {
 
@@ -38,6 +46,7 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
     }
 
     @Override
+    @SuppressWarnings("null")
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
         try {
             String externalRef = userId + ":" + planId;
@@ -61,10 +70,10 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
             // 2. Create Standalone Subscription (mimicking the plan)
             String url = "https://api.mercadopago.com/preapproval";
 
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
-            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = new HashMap<>();
             // WE DO NOT SEND "preapproval_plan_id" so we can use status="pending" and get a
@@ -75,24 +84,22 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
             body.put("back_url", computedBackUrl);
             body.put("status", "pending");
 
-            // payer_email removido para permitir que el usuario pague con cualquier cuenta
-            // de MP,
-            // ya que la reconciliación se hace por external_reference.
-            /*
-             * if (userEmail != null && !userEmail.isBlank()) {
-             * body.put("payer_email", userEmail);
-             * }
-             */
+            // payer_email removed to allow payment from any MP account; reconciliation uses
+            // external_reference.
 
-            org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = new org.springframework.http.HttpEntity<>(
-                    body, headers);
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity,
-                    Map.class);
+            ParameterizedTypeReference<Map<String, Object>> mapTypeRef = new ParameterizedTypeReference<>() {
+            };
+            @SuppressWarnings("null")
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    mapTypeRef);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> respBody = (Map<String, Object>) response.getBody();
+                Map<String, Object> respBody = response.getBody();
                 if (respBody != null) {
                     String initPoint = (String) respBody.get("init_point");
                     if (initPoint != null && !initPoint.isBlank()) {
@@ -136,34 +143,10 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
 
     @Override
     public Optional<Map<String, Object>> getAuthorizedPayment(String paymentId) {
-        // La SDK de Java a veces no expone AuthorizedPayments directamente o es
-        // confuso.
-        // Dado que este endpoint es específico, si la SDK no lo soporta fácilmente,
-        // podríamos usar el cliente genérico de la SDK o mantener RestTemplate solo
-        // para esto.
-        // Por simplicidad y consistencia con el pedido del usuario, intentaremos usar
-        // PaymentClient
-        // Pero AuthorizedPayment es distinto a Payment V1.
-        // Si falla, volver al RestTemplate sería ideal, pero tratemos de usar una
-        // llamada genérica SDK si existe.
-        // INVESTIGACIÓN: PaymentClient generalmente trae pagos. AuthorizedPayment es
-        // otro recurso.
-        // Para no bloquear, dejaré este método usando una implementación manual simple
-        // O
-        // asumiendo que el ID de pago autorizado se puede consultar como pago (a veces
-        // funciona).
-        // Sin embargo, para cumplir con "Metele nomas al SDK", trataremos de usarlo.
-        // Si no hay clase AuthorizedPaymentClient, usaremos un trick con NetClient o
-        // devolveremos empty por ahora
-        // si no es crítico, O mejor: implementar una llamada manual usando el
-        // HttpClient interno del SDK?
-        // No, demasiado complejo.
-
-        // VOY A MANTENER EL COMPORTAMIENTO DE PREAPROBACIÓN y PAGO, pero para
-        // AuthorizedPayment
-        // si no encuentro cliente, dejaré un TODO o usaré el de Payment si aplica.
-        // Nota: "Authorized payments" son los cobros recurrentes. Suelen aparecer en
-        // v1/payments también.
+        // AuthorizedPayment is distinct from Payment V1, but the Java SDK might not
+        // expose it directly.
+        // We attempt to fetch using PaymentClient as a fallback, which sometimes
+        // resolves authorized payments.
 
         try {
             PaymentClient client = new PaymentClient();
@@ -181,29 +164,28 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
     }
 
     @Override
+    @SuppressWarnings("null")
     public Optional<Map<String, Object>> getPreapprovalPlan(String mpPlanId) {
         // SDK Java 2.1.29 no tiene PreapprovalPlanClient expuesto fácilmente.
         // Usamos RestTemplate localmente para este endpoint específico.
         try {
             String url = "https://api.mercadopago.com/preapproval_plan/" + mpPlanId;
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
-            org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            org.springframework.http.ResponseEntity<Map> response = restTemplate.exchange(
+            ParameterizedTypeReference<Map<String, Object>> mapTypeRef = new ParameterizedTypeReference<>() {
+            };
+            @SuppressWarnings("null")
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
-                    org.springframework.http.HttpMethod.GET,
+                    HttpMethod.GET,
                     entity,
-                    Map.class);
+                    mapTypeRef);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                // Hacemos el cast seguro con ayuda de una variable local o supresión si es
-                // necesario,
-                // pero Map.class devuelve un mapa crudo, lo casteamos a Map<String,Object>
-                // implícitamente
-                @SuppressWarnings("unchecked")
-                Map<String, Object> body = (Map<String, Object>) response.getBody();
+                Map<String, Object> body = response.getBody();
                 return Optional.of(body);
             }
         } catch (Exception e) {
