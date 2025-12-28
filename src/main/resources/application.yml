@@ -52,3 +52,9 @@ notifications:
   api:
     url: ${NOTIFICATIONS_API_URL:https://beta.notificaciones.fixe.com.ar/api/notifications}
     key: ${APP_API_KEY:}
+
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN:TEST-5097366561977523-122011-f4903541ee4333b78af5aefbf0bf6235-323751961}
+  public-key: ${MP_PUBLIC_KEY:TEST-38790462-e990-4cc3-a4b3-3a9ccd60a8f8}
+  webhook-secret: ${MP_WEBHOOK_SECRET:ed7961aded85d2c1d2c68c2e147d8e9b80b02781a15912b26f96405ca804d973}
+  back-url: ${MP_BACK_URL:https://fixe.com.ar/backoffice/suscripcion/ready}

@@ -6,8 +6,14 @@ import java.util.List;
 
 public interface EmpresaRepositoryPort {
     Optional<Empresa> findById(Long id);
+
     Optional<Empresa> findBySlug(String slug);
+
     Empresa save(Empresa empresa);
+
     List<Empresa> findAll();
+
     List<Empresa> findVisibles();
+
+    Optional<Empresa> findByUsuarioAdminId(Long id);
 }
