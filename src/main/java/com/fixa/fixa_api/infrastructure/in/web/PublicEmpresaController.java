@@ -15,6 +15,8 @@ import com.fixa.fixa_api.domain.model.ValoracionResumen;
 import com.fixa.fixa_api.infrastructure.in.web.dto.EmpresaDestacadaResponse;
 import com.fixa.fixa_api.infrastructure.in.web.dto.ValoracionPublicaResponse;
 import com.fixa.fixa_api.infrastructure.in.web.dto.ValoracionResumenResponse;
+import com.fixa.fixa_api.application.service.DisponibilidadSlotService;
+import com.fixa.fixa_api.infrastructure.in.web.dto.DisponibilidadGlobalSlot;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,19 +33,22 @@ public class PublicEmpresaController {
     private final DisponibilidadService disponibilidadService;
     private final ValoracionService valoracionService;
     private final RankingEmpresaService rankingEmpresaService;
+    private final DisponibilidadSlotService disponibilidadSlotService;
 
     public PublicEmpresaController(EmpresaService empresaService,
-                                   ServicioService servicioService,
-                                   EmpleadoService empleadoService,
-                                   DisponibilidadService disponibilidadService,
-                                   ValoracionService valoracionService,
-                                   RankingEmpresaService rankingEmpresaService) {
+            ServicioService servicioService,
+            EmpleadoService empleadoService,
+            DisponibilidadService disponibilidadService,
+            ValoracionService valoracionService,
+            RankingEmpresaService rankingEmpresaService,
+            DisponibilidadSlotService disponibilidadSlotService) {
         this.empresaService = empresaService;
         this.servicioService = servicioService;
         this.empleadoService = empleadoService;
         this.disponibilidadService = disponibilidadService;
         this.valoracionService = valoracionService;
         this.rankingEmpresaService = rankingEmpresaService;
+        this.disponibilidadSlotService = disponibilidadSlotService;
     }
 
     // Catálogo público: solo empresas visibles
@@ -51,8 +56,7 @@ public class PublicEmpresaController {
     public ResponseEntity<List<Empresa>> listarEmpresasVisibles(
             @RequestParam(value = "categoriaId", required = false) Long categoriaId,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "size", required = false) Integer size
-    ) {
+            @RequestParam(value = "size", required = false) Integer size) {
         List<Empresa> result = empresaService.listarPublicasPorCategoriaServicioPaginado(categoriaId, page, size);
         return ResponseEntity.ok(result);
     }
@@ -60,10 +64,9 @@ public class PublicEmpresaController {
     @GetMapping("/destacadas")
     public ResponseEntity<List<EmpresaDestacadaResponse>> listarEmpresasDestacadas(
             @RequestParam(value = "categoriaId", required = false) Long categoriaId,
-            @RequestParam(value = "limit", required = false) Integer limit
-    ) {
-        List<RankingEmpresaService.EmpresaDestacada> ranking =
-                rankingEmpresaService.listarEmpresasDestacadas(categoriaId, limit);
+            @RequestParam(value = "limit", required = false) Integer limit) {
+        List<RankingEmpresaService.EmpresaDestacada> ranking = rankingEmpresaService
+                .listarEmpresasDestacadas(categoriaId, limit);
 
         List<EmpresaDestacadaResponse> response = ranking.stream()
                 .map(EmpresaDestacadaResponse::fromDomain)
@@ -75,9 +78,9 @@ public class PublicEmpresaController {
     // Servicios públicos por empresa (por defecto solo activos)
     @GetMapping("/{empresaId}/servicios")
     public ResponseEntity<List<Servicio>> listarServiciosPublicos(@PathVariable Long empresaId,
-                                                                  @RequestParam(value = "soloActivos", required = false, defaultValue = "true") boolean soloActivos,
-                                                                  @RequestParam(value = "page", required = false) Integer page,
-                                                                  @RequestParam(value = "size", required = false) Integer size) {
+            @RequestParam(value = "soloActivos", required = false, defaultValue = "true") boolean soloActivos,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
         // Usar métodos públicos que NO requieren autenticación
         List<Servicio> result = (page != null && size != null)
                 ? servicioService.listarPorEmpresaPaginadoPublico(empresaId, soloActivos, page, size)
@@ -97,8 +100,7 @@ public class PublicEmpresaController {
     public ResponseEntity<List<Disponibilidad>> obtenerDisponibilidadPublica(
             @PathVariable Long empresaId,
             @PathVariable Long empleadoId) {
-        List<Disponibilidad> disponibilidad = 
-            disponibilidadService.listarPorEmpleado(empleadoId);
+        List<Disponibilidad> disponibilidad = disponibilidadService.listarPorEmpleado(empleadoId);
         return ResponseEntity.ok(disponibilidad);
     }
 
@@ -106,8 +108,7 @@ public class PublicEmpresaController {
     @GetMapping("/empleados/{empleadoId}/disponibilidad")
     public ResponseEntity<List<Disponibilidad>> obtenerDisponibilidadPublicaCorta(
             @PathVariable Long empleadoId) {
-        List<Disponibilidad> disponibilidad = 
-            disponibilidadService.listarPorEmpleado(empleadoId);
+        List<Disponibilidad> disponibilidad = disponibilidadService.listarPorEmpleado(empleadoId);
         return ResponseEntity.ok(disponibilidad);
     }
 
@@ -150,11 +151,12 @@ public class PublicEmpresaController {
 
     @GetMapping("/{empresaId}/valoraciones")
     public ResponseEntity<List<ValoracionPublicaResponse>> listarValoracionesPublicas(@PathVariable Long empresaId,
-                                                                                      @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
-                                                                                      @RequestParam(value = "limit", required = false) Integer limit) {
+            @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
+            @RequestParam(value = "limit", required = false) Integer limit) {
         return empresaService.obtener(empresaId)
                 .map(empresa -> {
-                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresaId, soloConResena, limit);
+                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresaId,
+                            soloConResena, limit);
                     List<ValoracionPublicaResponse> respuesta = valoraciones.stream()
                             .map(ValoracionPublicaResponse::fromDomain)
                             .collect(Collectors.toList());
@@ -175,16 +177,26 @@ public class PublicEmpresaController {
 
     @GetMapping("/slug/{slug}/valoraciones")
     public ResponseEntity<List<ValoracionPublicaResponse>> listarValoracionesPublicasPorSlug(@PathVariable String slug,
-                                                                                             @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
-                                                                                             @RequestParam(value = "limit", required = false) Integer limit) {
+            @RequestParam(value = "soloConResena", defaultValue = "false") boolean soloConResena,
+            @RequestParam(value = "limit", required = false) Integer limit) {
         return empresaService.obtenerPorSlug(slug)
                 .map(empresa -> {
-                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresa.getId(), soloConResena, limit);
+                    List<Valoracion> valoraciones = valoracionService.obtenerComentariosPublicos(empresa.getId(),
+                            soloConResena, limit);
                     List<ValoracionPublicaResponse> respuesta = valoraciones.stream()
                             .map(ValoracionPublicaResponse::fromDomain)
                             .collect(Collectors.toList());
                     return ResponseEntity.ok(respuesta);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Disponibilidad global agregada (sin preferencia de empleado)
+    @GetMapping("/{empresaId}/servicios/{servicioId}/disponibilidad-global")
+    public ResponseEntity<List<DisponibilidadGlobalSlot>> obtenerDisponibilidadGlobal(
+            @PathVariable Long empresaId,
+            @PathVariable Long servicioId) {
+        List<DisponibilidadGlobalSlot> slots = disponibilidadSlotService.generarSlotsGlobales(empresaId, servicioId);
+        return ResponseEntity.ok(slots);
     }
 }

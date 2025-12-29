@@ -54,6 +54,19 @@ CORS: http://localhost:5173
   ]
   ```
 
+- GET /api/public/empresas/{empresaId}/servicios/{servicioId}/disponibilidad-global
+  - 200 Respuesta:
+  ```json
+  [
+    {
+      "fecha": "2024-05-20",
+      "horaInicio": "10:00",
+      "horaFin": "10:30",
+      "empleadosDisponibles": [ { "id": 1, "nombre": "Juan", "apellido": "Perez", "fotoUrl": null } ]
+    }
+  ]
+  ```
+
 - GET /api/public/servicios
   - Query: categoriaId?, page? (default 0), size? (default 20, máx. 50)
   - 200 Respuesta (lista ordenada por score de recomendación: promedio de valoración + cantidad de valoraciones):

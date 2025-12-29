@@ -55,6 +55,10 @@ Base URL (local): `http://localhost:8080`
 - GET `/api/public/empresas/{empresaId}/servicios`
   - Query params: `soloActivos` (default=true), `page`, `size`
 
+- GET `/api/public/empresas/{empresaId}/servicios/{servicioId}/disponibilidad-global`
+  - Devuelve disponibilidad agregada de todos los empleados elegibles para el servicio (Feature "Sin preferencia").
+  - Respuesta 200: Lista de slots `{ fecha, horaInicio, horaFin, empleadosDisponibles: [{id, nombre, ...}] }`
+
 - GET `/api/public/empresas/{empresaId}/valoraciones/resumen`
   - Respuesta 200: Promedio (1 decimal), totales y métricas básicas
   - Respuesta 404: Empresa no encontrada o no visible

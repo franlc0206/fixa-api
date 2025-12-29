@@ -14,6 +14,13 @@ import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.fixa.fixa_api.domain.model.Empleado;
+import com.fixa.fixa_api.infrastructure.in.web.dto.DisponibilidadGlobalSlot;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -24,6 +31,7 @@ import java.util.stream.Collectors;
 public class DisponibilidadSlotService {
 
     private final DisponibilidadService disponibilidadService;
+    private final EmpleadoService empleadoService;
     private final TurnoQueryService turnoQueryService;
     private final TurnoIntervaloCalculator turnoIntervaloCalculator;
     private final ServicioRepositoryPort servicioRepositoryPort;
@@ -31,10 +39,12 @@ public class DisponibilidadSlotService {
     private static final int DIAS_ADELANTE = 30; // Generar slots para los próximos 30 días
 
     public DisponibilidadSlotService(DisponibilidadService disponibilidadService,
+            EmpleadoService empleadoService,
             TurnoQueryService turnoQueryService,
             TurnoIntervaloCalculator turnoIntervaloCalculator,
             ServicioRepositoryPort servicioRepositoryPort) {
         this.disponibilidadService = disponibilidadService;
+        this.empleadoService = empleadoService;
         this.turnoQueryService = turnoQueryService;
         this.turnoIntervaloCalculator = turnoIntervaloCalculator;
         this.servicioRepositoryPort = servicioRepositoryPort;
@@ -87,6 +97,49 @@ public class DisponibilidadSlotService {
         marcarSlotsOcupados(slots, empleadoId, fechaInicio, fechaFin);
 
         return slots;
+    }
+
+    /**
+     * Genera slots agregados de todos los empleados disponibles para un servicio y
+     * empresa.
+     */
+    public List<DisponibilidadGlobalSlot> generarSlotsGlobales(Long empresaId, Long servicioId) {
+        List<Empleado> empleados = empleadoService.listarPublicosPorEmpresa(empresaId);
+        Map<String, DisponibilidadGlobalSlot> slotsMap = new HashMap<>();
+
+        for (Empleado emp : empleados) {
+            if (!Boolean.TRUE.equals(emp.isActivo()))
+                continue;
+
+            List<DisponibilidadSlot> slots = generarSlotsParaEmpleado(emp.getId());
+            slots = filtrarSlotsDisponibles(slots);
+            if (servicioId != null) {
+                slots = filtrarSlotsPorServicio(slots, servicioId);
+            }
+
+            for (DisponibilidadSlot s : slots) {
+                String key = s.getFecha().toString() + " " + s.getHoraInicio().toString();
+
+                slotsMap.computeIfAbsent(key, k -> DisponibilidadGlobalSlot.builder()
+                        .fecha(s.getFecha())
+                        .horaInicio(s.getHoraInicio())
+                        .horaFin(s.getHoraFin())
+                        .empleadosDisponibles(new ArrayList<>())
+                        .build())
+                        .getEmpleadosDisponibles()
+                        .add(DisponibilidadGlobalSlot.EmpleadoResumen.builder()
+                                .id(emp.getId())
+                                .nombre(emp.getNombre())
+                                .apellido(emp.getApellido())
+                                .fotoUrl(emp.getFotoUrl())
+                                .build());
+            }
+        }
+
+        return slotsMap.values().stream()
+                .sorted(Comparator.comparing(DisponibilidadGlobalSlot::getFecha)
+                        .thenComparing(DisponibilidadGlobalSlot::getHoraInicio))
+                .collect(Collectors.toList());
     }
 
     /**
