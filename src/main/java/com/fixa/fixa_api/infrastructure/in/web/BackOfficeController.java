@@ -82,7 +82,8 @@ public class BackOfficeController {
     }
 
     @PutMapping("/empresa")
-    public ResponseEntity<Empresa> actualizarEmpresaActiva(@RequestBody EmpresaRequest req) {
+    public ResponseEntity<Empresa> actualizarEmpresaActiva(
+            @RequestBody com.fixa.fixa_api.infrastructure.in.web.dto.ActualizarEmpresaRequest req) {
         Long userId = currentUserService.getCurrentUserId()
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
 
@@ -95,26 +96,7 @@ public class BackOfficeController {
 
         Long empresaId = primeraEmpresaActiva.getEmpresaId();
 
-        empresaService.obtener(empresaId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
-
-        Empresa d = new Empresa();
-        d.setId(empresaId);
-        d.setNombre(req.getNombre());
-        d.setDescripcion(req.getDescripcion());
-        d.setDireccion(req.getDireccion());
-        d.setTelefono(req.getTelefono());
-        d.setEmail(req.getEmail());
-        d.setBannerUrl(req.getBannerUrl());
-        d.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
-        d.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
-        d.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());
-        d.setMensajeValidacionPersonalizado(req.getMensajeValidacionPersonalizado());
-        d.setVisibilidadPublica(req.isVisibilidadPublica());
-        d.setActivo(req.isActivo());
-        d.setCategoriaId(req.getCategoriaId());
-
-        Empresa saved = empresaService.guardar(d);
+        Empresa saved = empresaService.actualizarDatosEmpresa(empresaId, req);
         return ResponseEntity.ok(saved);
     }
 

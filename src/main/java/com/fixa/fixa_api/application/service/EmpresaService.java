@@ -235,4 +235,37 @@ public class EmpresaService {
                 // Eliminar guiones al inicio y final
                 .replaceAll("^-|-$", "");
     }
+
+    public Empresa actualizarDatosEmpresa(Long empresaId,
+            com.fixa.fixa_api.infrastructure.in.web.dto.ActualizarEmpresaRequest req) {
+        Empresa e = empresaPort.findById(empresaId)
+                .orElseThrow(() -> new RuntimeException("Empresa no encontrada"));
+
+        if (req.getNombre() != null)
+            e.setNombre(req.getNombre());
+        if (req.getDescripcion() != null)
+            e.setDescripcion(req.getDescripcion());
+        if (req.getDireccion() != null)
+            e.setDireccion(req.getDireccion());
+        if (req.getTelefono() != null)
+            e.setTelefono(req.getTelefono());
+        if (req.getEmail() != null)
+            e.setEmail(req.getEmail());
+        if (req.getBannerUrl() != null)
+            e.setBannerUrl(req.getBannerUrl());
+        if (req.getLogoUrl() != null)
+            e.setLogoUrl(req.getLogoUrl());
+        if (req.getCategoriaId() != null)
+            e.setCategoriaId(req.getCategoriaId());
+
+        e.setPermiteReservasSinUsuario(req.isPermiteReservasSinUsuario());
+        e.setRequiereValidacionTelefono(req.isRequiereValidacionTelefono());
+        e.setRequiereAprobacionTurno(req.isRequiereAprobacionTurno());
+        e.setMensajeValidacionPersonalizado(req.getMensajeValidacionPersonalizado());
+        e.setVisibilidadPublica(req.isVisibilidadPublica());
+
+        // NO TOCAMOS 'activo', 'slug', 'planActual', 'usuarioAdmin'
+
+        return empresaPort.save(e);
+    }
 }
