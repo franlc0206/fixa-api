@@ -27,6 +27,8 @@ public class EmpresaMapper {
         d.setRequiereAprobacionTurno(e.isRequiereAprobacionTurno());
         d.setMensajeValidacionPersonalizado(e.getMensajeValidacionPersonalizado());
         d.setVisibilidadPublica(e.isVisibilidadPublica());
+        d.setLatitud(e.getLatitud());
+        d.setLongitud(e.getLongitud());
         d.setActivo(e.isActivo());
         if (e.getPlanActual() != null) {
             d.setPlanActualId(e.getPlanActual().getId());
@@ -49,6 +51,8 @@ public class EmpresaMapper {
         e.setRequiereAprobacionTurno(d.isRequiereAprobacionTurno());
         e.setMensajeValidacionPersonalizado(d.getMensajeValidacionPersonalizado());
         e.setVisibilidadPublica(d.isVisibilidadPublica());
+        e.setLatitud(d.getLatitud());
+        e.setLongitud(d.getLongitud());
         e.setActivo(d.isActivo());
         e.setCategoria(categoria);
         e.setUsuarioAdmin(admin);
