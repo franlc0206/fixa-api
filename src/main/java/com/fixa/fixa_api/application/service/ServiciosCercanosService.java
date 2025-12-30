@@ -30,8 +30,12 @@ public class ServiciosCercanosService {
 
     public List<ServicioCercanoResponse> obtenerServiciosCercanos(double lat, double lon, double radioKm, Integer limit,
             Long categoriaId) {
+        System.out.println(">>> BUSCANDO SERVICIOS CERCANOS");
+        System.out.println("    Lat: " + lat + ", Lon: " + lon + ", Radio: " + radioKm + "km");
+
         // 1. Obtener empresas cercanas
         List<Empresa> empresasCercanas = empresaPort.findCercanas(lat, lon, radioKm);
+        System.out.println("    Empresas encontradas en radio: " + empresasCercanas.size());
 
         if (empresasCercanas.isEmpty()) {
             return new ArrayList<>();
