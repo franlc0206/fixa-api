@@ -16,4 +16,6 @@ public interface EmpresaRepositoryPort {
     List<Empresa> findVisibles();
 
     Optional<Empresa> findByUsuarioAdminId(Long id);
+
+    List<Empresa> findCercanas(double latitud, double longitud, double radioKm);
 }

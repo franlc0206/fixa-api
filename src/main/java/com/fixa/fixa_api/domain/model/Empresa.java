@@ -20,6 +20,9 @@ public class Empresa {
     private boolean requiereAprobacionTurno;
     private String mensajeValidacionPersonalizado;
     private boolean visibilidadPublica;
+    private Double latitud;
+    private Double longitud;
+    private Double distancia; // Distancia calculada en KM, transient
     private boolean activo;
     private Long planActualId;
 }

@@ -264,6 +264,11 @@ public class EmpresaService {
         e.setMensajeValidacionPersonalizado(req.getMensajeValidacionPersonalizado());
         e.setVisibilidadPublica(req.isVisibilidadPublica());
 
+        if (req.getLatitud() != null)
+            e.setLatitud(req.getLatitud());
+        if (req.getLongitud() != null)
+            e.setLongitud(req.getLongitud());
+
         // NO TOCAMOS 'activo', 'slug', 'planActual', 'usuarioAdmin'
 
         return empresaPort.save(e);

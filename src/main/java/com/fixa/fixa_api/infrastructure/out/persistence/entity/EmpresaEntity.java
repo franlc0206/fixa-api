@@ -59,6 +59,12 @@ public class EmpresaEntity {
     @Column(name = "visibilidad_publica")
     private boolean visibilidadPublica;
 
+    @Column(name = "latitud", precision = 10, scale = 8)
+    private Double latitud;
+
+    @Column(name = "longitud", precision = 11, scale = 8)
+    private Double longitud;
+
     @Column(name = "activo")
     private boolean activo;
 

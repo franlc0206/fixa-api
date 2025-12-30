@@ -19,4 +19,6 @@ public class ActualizarEmpresaRequest {
     private boolean requiereAprobacionTurno;
     private String mensajeValidacionPersonalizado;
     private boolean visibilidadPublica; // Esto controla "visible en listados", diferente a "activo" (ban/suspensión)
+    private Double latitud;
+    private Double longitud;
 }
