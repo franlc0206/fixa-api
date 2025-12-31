@@ -104,7 +104,11 @@ public class TurnoCommandService
 
         // Setear estado inicial según reglas (empresa)
         turno.setEstado(empresa.isRequiereAprobacionTurno() ? "PENDIENTE" : "CONFIRMADO");
-        turno.setRequiereValidacion(empresa.isRequiereValidacionTelefono());
+
+        // Solo requiere validación si la empresa lo pide Y el usuario NO está
+        // registrado (es anónimo)
+        boolean esAnonimo = (turno.getClienteId() == null);
+        turno.setRequiereValidacion(empresa.isRequiereValidacionTelefono() && esAnonimo);
 
         // Persistir via puerto
         Turno guardado = turnoPort.save(turno);

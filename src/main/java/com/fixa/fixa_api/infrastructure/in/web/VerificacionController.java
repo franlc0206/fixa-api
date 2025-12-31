@@ -45,21 +45,22 @@ public class VerificacionController {
         // Mapear DTO a parámetros del use case
         VerificacionTelefono verificacion = crearVerificacionUseCase.ejecutar(
                 request.getTelefono(),
+                request.getEmail(),
                 request.getCanal(),
-                request.getTurnoId()
-        );
+                request.getTurnoId());
 
         // Mapear modelo de dominio a DTO de respuesta
         VerificacionResponse response = new VerificacionResponse();
         response.setId(verificacion.getId());
         response.setTelefono(verificacion.getTelefono());
+        response.setEmail(verificacion.getEmail());
         response.setCanal(verificacion.getCanal());
         response.setFechaEnvio(verificacion.getFechaEnvio());
         response.setFechaExpiracion(verificacion.getFechaExpiracion());
         response.setValidado(verificacion.isValidado());
         response.setTurnoId(verificacion.getTurnoId());
-        response.setMessage("Código de verificación enviado por " + verificacion.getCanal() + 
-                          ". Válido por 5 minutos.");
+        response.setMessage("Código de verificación enviado por " + verificacion.getCanal() +
+                ". Válido por 5 minutos.");
 
         return ResponseEntity.ok(response);
     }
@@ -68,7 +69,7 @@ public class VerificacionController {
      * POST /api/public/verificaciones/{id}/confirm
      * Confirma un código de verificación.
      * 
-     * @param id ID de la verificación
+     * @param id      ID de la verificación
      * @param request Código ingresado por el usuario
      * @return Verificación confirmada
      */
@@ -76,7 +77,7 @@ public class VerificacionController {
     public ResponseEntity<VerificacionResponse> confirmar(
             @PathVariable Long id,
             @Valid @RequestBody VerificacionConfirmRequest request) {
-        
+
         // Ejecutar use case
         VerificacionTelefono verificacion = confirmarCodigoUseCase.ejecutar(id, request.getCodigo());
 
@@ -84,13 +85,14 @@ public class VerificacionController {
         VerificacionResponse response = new VerificacionResponse();
         response.setId(verificacion.getId());
         response.setTelefono(verificacion.getTelefono());
+        response.setEmail(verificacion.getEmail());
         response.setCanal(verificacion.getCanal());
         response.setFechaEnvio(verificacion.getFechaEnvio());
         response.setFechaExpiracion(verificacion.getFechaExpiracion());
         response.setValidado(verificacion.isValidado());
         response.setTurnoId(verificacion.getTurnoId());
-        response.setMessage(verificacion.getTurnoId() != null 
-                ? "Código verificado exitosamente. Tu turno ha sido confirmado." 
+        response.setMessage(verificacion.getTurnoId() != null
+                ? "Código verificado exitosamente. Tu turno ha sido confirmado."
                 : "Código verificado exitosamente.");
 
         return ResponseEntity.ok(response);

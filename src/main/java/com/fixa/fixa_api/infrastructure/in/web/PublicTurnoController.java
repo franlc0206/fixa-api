@@ -48,25 +48,25 @@ public class PublicTurnoController {
     public ResponseEntity<List<Turno>> listarTurnosPublicos(
             @RequestParam(required = false) Long empleadoId,
             @RequestParam(required = false) String fecha) { // formato: yyyy-MM-dd
-        
+
         LocalDateTime desde = null;
         LocalDateTime hasta = null;
-        
+
         if (fecha != null) {
             LocalDate fechaLocal = LocalDate.parse(fecha);
             desde = fechaLocal.atStartOfDay();
             hasta = fechaLocal.plusDays(1).atStartOfDay();
         }
-        
+
         // Listar turnos sin filtro de estado (null)
         List<Turno> turnos = turnoQueryService.listar(null, empleadoId, null, desde, hasta, null, null);
-        
+
         // Filtrar solo CONFIRMADO y PENDIENTE para mostrar horarios ocupados
         List<Turno> turnosOcupados = turnos.stream()
-                .filter(t -> "CONFIRMADO".equalsIgnoreCase(t.getEstado()) || 
-                            "PENDIENTE".equalsIgnoreCase(t.getEstado()))
+                .filter(t -> "CONFIRMADO".equalsIgnoreCase(t.getEstado()) ||
+                        "PENDIENTE".equalsIgnoreCase(t.getEstado()))
                 .toList();
-        
+
         return ResponseEntity.ok(turnosOcupados);
     }
 
@@ -95,31 +95,35 @@ public class PublicTurnoController {
                         .ifPresent(usuario -> t.setClienteId(usuario.getId()));
             }
         }
-        
+
         Turno creado = crearTurnoUseCase.ejecutar(t);
-        
+
         // Construir response mejorado
         TurnoPublicoResponse response = new TurnoPublicoResponse();
         response.setTurnoId(creado.getId());
         response.setEstado(creado.getEstado());
         response.setRequiresValidation(creado.isRequiereValidacion());
-        
+
         // Si requiere validación telefónica, crear verificación y enviar SMS
         if (creado.isRequiereValidacion() && creado.getClienteTelefono() != null) {
             try {
+                String canal = (creado.getClienteEmail() != null && !creado.getClienteEmail().isBlank()) ? "email"
+                        : "sms";
+                String destino = canal.equals("email") ? creado.getClienteEmail() : creado.getClienteTelefono();
+
                 VerificacionTelefono verificacion = crearVerificacionUseCase.ejecutar(
                         creado.getClienteTelefono(),
-                        "sms", // Default canal
-                        creado.getId()
-                );
+                        creado.getClienteEmail(),
+                        canal,
+                        creado.getId());
                 response.setVerificationId(verificacion.getId());
-                response.setMessage("Turno creado. Hemos enviado un código de verificación a " + 
-                                  creado.getClienteTelefono() + ". Por favor, confírmalo para completar tu reserva.");
+                response.setMessage("Turno creado. Hemos enviado un código de verificación a " +
+                        destino + ". Por favor, confírmalo para completar tu reserva.");
             } catch (Exception e) {
                 // Si falla el envío del SMS, el turno ya está creado pero sin verificación
                 response.setVerificationId(null);
                 response.setMessage("Turno creado pero hubo un error al enviar el código de verificación. " +
-                                  "Por favor, contacta con la empresa.");
+                        "Por favor, contacta con la empresa.");
             }
         } else {
             // No requiere validación telefónica
@@ -134,7 +138,7 @@ public class PublicTurnoController {
             }
             response.setMessage(message);
         }
-        
+
         return ResponseEntity.ok(response);
     }
 }

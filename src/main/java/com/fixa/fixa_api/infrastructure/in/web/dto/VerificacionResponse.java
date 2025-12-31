@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 
 /**
  * DTO para respuesta de verificación telefónica.
- * Siguiendo arquitectura hexagonal, este DTO pertenece a la capa de infraestructura (web).
+ * Siguiendo arquitectura hexagonal, este DTO pertenece a la capa de
+ * infraestructura (web).
  */
 @Data
 @NoArgsConstructor
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 public class VerificacionResponse {
     private Long id;
     private String telefono;
+    private String email;
     private String canal;
     private LocalDateTime fechaEnvio;
     private LocalDateTime fechaExpiracion;

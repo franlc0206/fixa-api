@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public class VerificacionTelefono {
     private Long id;
     private String telefono;
+    private String email;
     private String codigo;
     private LocalDateTime fechaEnvio;
     private LocalDateTime fechaExpiracion;

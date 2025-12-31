@@ -125,38 +125,45 @@ Base URL (local): `http://localhost:8080`
   - Response: TurnoPublicoResponse con campos:
     - `turnoId`: Long
     - `estado`: String (CONFIRMADO, PENDIENTE, etc.)
-    - `requiresValidation`: Boolean (indica si requiere validación telefónica)
+    - `requiresValidation`: Boolean (indica si requiere validación)
     - `verificationId`: Long (ID de la verificación creada si requiere validación, null si no)
     - `message`: String (mensaje descriptivo del resultado)
-  - **IMPORTANTE**: Si `requiresValidation=true`, el sistema crea automáticamente una verificación telefónica y envía el SMS con el código
+  - **LÓGICA**:
+    - Si el usuario **ya está registrado** (identificado por JWT o email): `requiresValidation` será `false`.
+    - Si el usuario es **ANÓNIMO** y la empresa requiere validación: `requiresValidation` será `true`.
+  - **IMPORTANTE**: Si `requiresValidation=true`, el sistema crea automáticamente una verificación y envía el código por **email** (si se proporcionó) o **sms**.
 
 ---
 
-## Verificación Telefónica (público)
+## Verificación (público)
 
 - POST `/api/public/verificaciones`
   - Body: 
     ```json
     {
       "telefono": "+5491112345678",
-      "canal": "sms",
+      "email": "usuario@ejemplo.com",
+      "canal": "email",
       "turnoId": 15
     }
     ```
+    - `canal`: "sms", "whatsapp" o "email" (default "sms").
+    - Si canal es "email", el campo `email` es obligatorio.
   - Response 200:
     ```json
     {
       "id": 1,
       "telefono": "+5491112345678",
-      "canal": "sms",
+      "email": "usuario@ejemplo.com",
+      "canal": "email",
       "fechaEnvio": "2025-11-10T14:00:00",
       "fechaExpiracion": "2025-11-10T14:05:00",
       "validado": false,
       "turnoId": 15,
-      "message": "Código de verificación enviado por sms. Válido por 5 minutos."
+      "message": "Código de verificación enviado por email. Válido por 5 minutos."
     }
     ```
-  - **IMPORTANTE**: En desarrollo, el código se loguea en consola (mock mode). En producción, se envía por SMS/WhatsApp vía Twilio.
+  - **IMPORTANTE**: En desarrollo, el código se loguea en consola (mock mode). En producción, se envía por el canal seleccionado.
 
 - POST `/api/public/verificaciones/{id}/confirm`
   - Body:
