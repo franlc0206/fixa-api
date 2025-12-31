@@ -21,4 +21,11 @@ public class Turno {
     private String estado; // pendiente_aprobacion, confirmado, cancelado, completado
     private boolean requiereValidacion;
     private String observaciones;
+    private java.math.BigDecimal precio;
+
+    // Campos enriquecidos para vista (no persistidos en DB excepto precio)
+    private String servicioNombre;
+    private String empleadoNombre;
+    private String empresaNombre;
+    private String empresaLogoUrl;
 }

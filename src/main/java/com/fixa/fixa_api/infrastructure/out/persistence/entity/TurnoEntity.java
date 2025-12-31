@@ -67,4 +67,5 @@ public class TurnoEntity {
 
     @Column(columnDefinition = "TEXT")
     private String observaciones;
+
 }
