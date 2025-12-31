@@ -37,6 +37,7 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
     private final VerificacionTelefonoRepositoryPort verificacionPort;
     private final SmsServicePort smsService;
     private final NotificationServicePort notificationService;
+    private final TurnoNotificationService turnoNotificationService;
     private final TurnoRepositoryPort turnoPort;
 
     // Rate limiting simple en memoria (en producción usar Redis)
@@ -46,10 +47,12 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
             VerificacionTelefonoRepositoryPort verificacionPort,
             SmsServicePort smsService,
             NotificationServicePort notificationService,
+            TurnoNotificationService turnoNotificationService,
             TurnoRepositoryPort turnoPort) {
         this.verificacionPort = verificacionPort;
         this.smsService = smsService;
         this.notificationService = notificationService;
+        this.turnoNotificationService = turnoNotificationService;
         this.turnoPort = turnoPort;
     }
 
@@ -155,6 +158,9 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
             }
 
             turnoPort.save(turno);
+
+            // Notificar al cliente que su turno ha sido confirmado/registrado exitosamente
+            turnoNotificationService.enviarNotificacionCreacion(turno);
         }
 
         return actualizada;
