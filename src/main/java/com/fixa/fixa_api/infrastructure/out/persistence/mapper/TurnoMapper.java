@@ -11,7 +11,8 @@ import com.fixa.fixa_api.infrastructure.out.persistence.entity.TurnoEstado;
 public class TurnoMapper {
 
     public static Turno toDomain(TurnoEntity e) {
-        if (e == null) return null;
+        if (e == null)
+            return null;
         Turno d = new Turno();
         d.setId(e.getId());
         d.setServicioId(e.getServicio() != null ? e.getServicio().getId() : null);
@@ -29,6 +30,26 @@ public class TurnoMapper {
         d.setEstado(e.getEstado() != null ? e.getEstado().name() : null);
         d.setRequiereValidacion(e.isRequiereValidacion());
         d.setObservaciones(e.getObservaciones());
+
+        // Mapeo campos enriquecidos
+        if (e.getServicio() != null) {
+            d.setServicioNombre(e.getServicio().getNombre());
+        }
+        if (e.getEmpresa() != null) {
+            d.setEmpresaNombre(e.getEmpresa().getNombre());
+            d.setEmpresaLogoUrl(e.getEmpresa().getLogoUrl());
+        }
+        if (e.getEmpleado() != null) {
+            String nombreCompleto = (e.getEmpleado().getNombre() != null ? e.getEmpleado().getNombre() : "") + " " +
+                    (e.getEmpleado().getApellido() != null ? e.getEmpleado().getApellido() : "");
+            d.setEmpleadoNombre(nombreCompleto.trim());
+        }
+
+        if (e.getServicio() != null && e.getServicio().getCosto() != null) {
+            d.setPrecio(e.getServicio().getCosto());
+        } else {
+            d.setPrecio(java.math.BigDecimal.ZERO);
+        }
         return d;
     }
 
@@ -38,8 +59,7 @@ public class TurnoMapper {
             ServicioEntity servicio,
             EmpleadoEntity empleado,
             EmpresaEntity empresa,
-            UsuarioEntity cliente
-    ) {
+            UsuarioEntity cliente) {
         e.setServicio(servicio);
         e.setEmpleado(empleado);
         e.setEmpresa(empresa);
@@ -57,5 +77,6 @@ public class TurnoMapper {
         }
         e.setRequiereValidacion(d.isRequiereValidacion());
         e.setObservaciones(d.getObservaciones());
+
     }
 }

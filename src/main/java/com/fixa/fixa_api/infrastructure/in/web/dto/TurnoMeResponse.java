@@ -24,6 +24,13 @@ public class TurnoMeResponse {
     private String observaciones;
     private boolean yaValorado;
 
+    // Nombres enriched
+    private String servicioNombre;
+    private String empleadoNombre;
+    private String empresaNombre;
+    private String empresaLogoUrl;
+    private java.math.BigDecimal precio;
+
     public static TurnoMeResponse fromDomain(Turno turno, boolean yaValorado) {
         TurnoMeResponse dto = new TurnoMeResponse();
         dto.setId(turno.getId());
@@ -43,9 +50,58 @@ public class TurnoMeResponse {
         dto.setRequiereValidacion(turno.isRequiereValidacion());
         dto.setObservaciones(turno.getObservaciones());
         dto.setYaValorado(yaValorado);
+
+        dto.setServicioNombre(turno.getServicioNombre());
+        dto.setEmpleadoNombre(turno.getEmpleadoNombre());
+        dto.setEmpresaNombre(turno.getEmpresaNombre());
+        dto.setEmpresaLogoUrl(turno.getEmpresaLogoUrl());
+        dto.setPrecio(turno.getPrecio());
+
         return dto;
     }
 
+    // Getters and Setters
+    public String getServicioNombre() {
+        return servicioNombre;
+    }
+
+    public void setServicioNombre(String servicioNombre) {
+        this.servicioNombre = servicioNombre;
+    }
+
+    public String getEmpleadoNombre() {
+        return empleadoNombre;
+    }
+
+    public void setEmpleadoNombre(String empleadoNombre) {
+        this.empleadoNombre = empleadoNombre;
+    }
+
+    public String getEmpresaNombre() {
+        return empresaNombre;
+    }
+
+    public void setEmpresaNombre(String empresaNombre) {
+        this.empresaNombre = empresaNombre;
+    }
+
+    public String getEmpresaLogoUrl() {
+        return empresaLogoUrl;
+    }
+
+    public void setEmpresaLogoUrl(String empresaLogoUrl) {
+        this.empresaLogoUrl = empresaLogoUrl;
+    }
+
+    public java.math.BigDecimal getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(java.math.BigDecimal precio) {
+        this.precio = precio;
+    }
+
+    // ... existing getters setters ...
     public Long getId() {
         return id;
     }
