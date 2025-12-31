@@ -104,8 +104,9 @@ public class PublicTurnoController {
         response.setEstado(creado.getEstado());
         response.setRequiresValidation(creado.isRequiereValidacion());
 
-        // Si requiere validación telefónica, crear verificación y enviar SMS
-        if (creado.isRequiereValidacion() && creado.getClienteTelefono() != null) {
+        // Si requiere validación, crear verificación y enviar código (Email o SMS)
+        if (creado.isRequiereValidacion()
+                && (creado.getClienteTelefono() != null || creado.getClienteEmail() != null)) {
             try {
                 String canal = (creado.getClienteEmail() != null && !creado.getClienteEmail().isBlank()) ? "email"
                         : "sms";
