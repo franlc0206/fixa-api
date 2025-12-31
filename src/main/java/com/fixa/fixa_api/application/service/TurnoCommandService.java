@@ -105,17 +105,21 @@ public class TurnoCommandService
         // Setear estado inicial según reglas (empresa)
         turno.setEstado(empresa.isRequiereAprobacionTurno() ? "PENDIENTE" : "CONFIRMADO");
 
-        // La validación es OBLIGATORIA para usuarios anónimos (que no están logueados).
-        // Para usuarios registrados, se omite para agilizar el proceso, tal como se
-        // definió.
-        boolean esAnonimo = (turno.getClienteId() == null);
-        turno.setRequiereValidacion(esAnonimo);
+        // La validación es OBLIGATORIA si el usuario NO está logueado (sesión JWT
+        // ausente).
+        // Incluso si encontramos un cliente por email, si no está logueado, verificamos
+        // para evitar suplantación.
+        boolean estaAutenticado = currentUserService.getCurrentUserId().isPresent();
+        turno.setRequiereValidacion(!estaAutenticado);
 
         // Persistir via puerto
         Turno guardado = turnoPort.save(turno);
 
-        // Notificar creación al cliente
-        enviarNotificacionCreacion(guardado, servicio, empresa);
+        // Notificar creación al cliente solo si no requiere validación inmediata
+        // Si requiere validación, el flujo de verificación enviará el código.
+        if (!guardado.isRequiereValidacion()) {
+            enviarNotificacionCreacion(guardado, servicio, empresa);
+        }
 
         return guardado;
     }
