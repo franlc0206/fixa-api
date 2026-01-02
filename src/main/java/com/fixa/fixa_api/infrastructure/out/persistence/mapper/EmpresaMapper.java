@@ -33,10 +33,10 @@ public class EmpresaMapper {
         if (e.getPlanActual() != null) {
             d.setPlanActualId(e.getPlanActual().getId());
         }
-        d.setCamposObligatoriosNombre(e.isCamposObligatoriosNombre());
-        d.setCamposObligatoriosApellido(e.isCamposObligatoriosApellido());
-        d.setCamposObligatoriosTelefono(e.isCamposObligatoriosTelefono());
-        d.setCamposObligatoriosDni(e.isCamposObligatoriosDni());
+        d.setCamposObligatoriosNombre(e.getCamposObligatoriosNombre() == null || e.getCamposObligatoriosNombre());
+        d.setCamposObligatoriosApellido(Boolean.TRUE.equals(e.getCamposObligatoriosApellido()));
+        d.setCamposObligatoriosTelefono(e.getCamposObligatoriosTelefono() == null || e.getCamposObligatoriosTelefono());
+        d.setCamposObligatoriosDni(Boolean.TRUE.equals(e.getCamposObligatoriosDni()));
         return d;
     }
 

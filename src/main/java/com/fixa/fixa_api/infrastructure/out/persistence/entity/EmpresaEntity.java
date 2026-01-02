@@ -74,14 +74,14 @@ public class EmpresaEntity {
 
     // Configuración de campos obligatorios para reserva
     @Column(name = "campos_obligatorios_nombre")
-    private boolean camposObligatoriosNombre = true; // Por defecto true para compatibilidad
+    private Boolean camposObligatoriosNombre = true; // Por defecto true para compatibilidad
 
     @Column(name = "campos_obligatorios_apellido")
-    private boolean camposObligatoriosApellido = false;
+    private Boolean camposObligatoriosApellido = false;
 
     @Column(name = "campos_obligatorios_telefono")
-    private boolean camposObligatoriosTelefono = true; // Por defecto true para compatibilidad
+    private Boolean camposObligatoriosTelefono = true; // Por defecto true para compatibilidad
 
     @Column(name = "campos_obligatorios_dni")
-    private boolean camposObligatoriosDni = false;
+    private Boolean camposObligatoriosDni = false;
 }
