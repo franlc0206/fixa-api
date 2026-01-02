@@ -33,6 +33,10 @@ public class EmpresaMapper {
         if (e.getPlanActual() != null) {
             d.setPlanActualId(e.getPlanActual().getId());
         }
+        d.setCamposObligatoriosNombre(e.isCamposObligatoriosNombre());
+        d.setCamposObligatoriosApellido(e.isCamposObligatoriosApellido());
+        d.setCamposObligatoriosTelefono(e.isCamposObligatoriosTelefono());
+        d.setCamposObligatoriosDni(e.isCamposObligatoriosDni());
         return d;
     }
 
@@ -57,5 +61,9 @@ public class EmpresaMapper {
         e.setCategoria(categoria);
         e.setUsuarioAdmin(admin);
         e.setPlanActual(plan);
+        e.setCamposObligatoriosNombre(d.isCamposObligatoriosNombre());
+        e.setCamposObligatoriosApellido(d.isCamposObligatoriosApellido());
+        e.setCamposObligatoriosTelefono(d.isCamposObligatoriosTelefono());
+        e.setCamposObligatoriosDni(d.isCamposObligatoriosDni());
     }
 }

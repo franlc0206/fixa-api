@@ -269,6 +269,11 @@ public class EmpresaService {
         if (req.getLongitud() != null)
             e.setLongitud(req.getLongitud());
 
+        e.setCamposObligatoriosNombre(req.isCamposObligatoriosNombre());
+        e.setCamposObligatoriosApellido(req.isCamposObligatoriosApellido());
+        e.setCamposObligatoriosTelefono(req.isCamposObligatoriosTelefono());
+        e.setCamposObligatoriosDni(req.isCamposObligatoriosDni());
+
         // NO TOCAMOS 'activo', 'slug', 'planActual', 'usuarioAdmin'
 
         return empresaPort.save(e);

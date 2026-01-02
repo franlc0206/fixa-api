@@ -25,4 +25,10 @@ public class Empresa {
     private Double distancia; // Distancia calculada en KM, transient
     private boolean activo;
     private Long planActualId;
+
+    // Configuración de campos obligatorios
+    private boolean camposObligatoriosNombre;
+    private boolean camposObligatoriosApellido;
+    private boolean camposObligatoriosTelefono;
+    private boolean camposObligatoriosDni;
 }

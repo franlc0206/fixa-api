@@ -3,6 +3,7 @@ package com.fixa.fixa_api.application.service;
 import com.fixa.fixa_api.application.usecase.AprobarTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CrearTurnoUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
+import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.repository.TurnoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
@@ -75,6 +76,9 @@ public class TurnoCommandService
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
         var empresa = empresaPort.findById(turno.getEmpresaId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
+
+        // Validar campos obligatorios configurables
+        validarCamposObligatorios(empresa, turno);
 
         // Calcular fin según duración del servicio
         if (turno.getFechaHoraInicio() == null) {
@@ -395,6 +399,24 @@ public class TurnoCommandService
         if (solapa) {
             throw new ApiException(HttpStatus.CONFLICT,
                     "Existe solapamiento de turnos para el empleado (intervalos ocupados)");
+        }
+    }
+
+    private void validarCamposObligatorios(Empresa empresa, Turno turno) {
+        if (empresa.isCamposObligatoriosNombre()
+                && (turno.getClienteNombre() == null || turno.getClienteNombre().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El nombre es obligatorio para esta empresa");
+        }
+        if (empresa.isCamposObligatoriosApellido()
+                && (turno.getClienteApellido() == null || turno.getClienteApellido().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El apellido es obligatorio para esta empresa");
+        }
+        if (empresa.isCamposObligatoriosTelefono()
+                && (turno.getClienteTelefono() == null || turno.getClienteTelefono().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El teléfono es obligatorio para esta empresa");
+        }
+        if (empresa.isCamposObligatoriosDni() && (turno.getClienteDni() == null || turno.getClienteDni().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El DNI es obligatorio para esta empresa");
         }
     }
 }

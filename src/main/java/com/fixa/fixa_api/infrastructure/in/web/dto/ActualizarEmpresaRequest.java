@@ -21,4 +21,10 @@ public class ActualizarEmpresaRequest {
     private boolean visibilidadPublica; // Esto controla "visible en listados", diferente a "activo" (ban/suspensión)
     private Double latitud;
     private Double longitud;
+
+    // Configuración de campos obligatorios
+    private boolean camposObligatoriosNombre;
+    private boolean camposObligatoriosApellido;
+    private boolean camposObligatoriosTelefono;
+    private boolean camposObligatoriosDni;
 }

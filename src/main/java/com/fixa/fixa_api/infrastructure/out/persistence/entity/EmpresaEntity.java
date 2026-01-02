@@ -71,4 +71,17 @@ public class EmpresaEntity {
     @ManyToOne
     @JoinColumn(name = "plan_actual_id")
     private com.fixa.fixa_api.infrastructure.out.persistence.entity.PlanEntity planActual;
+
+    // Configuración de campos obligatorios para reserva
+    @Column(name = "campos_obligatorios_nombre")
+    private boolean camposObligatoriosNombre = true; // Por defecto true para compatibilidad
+
+    @Column(name = "campos_obligatorios_apellido")
+    private boolean camposObligatoriosApellido = false;
+
+    @Column(name = "campos_obligatorios_telefono")
+    private boolean camposObligatoriosTelefono = true; // Por defecto true para compatibilidad
+
+    @Column(name = "campos_obligatorios_dni")
+    private boolean camposObligatoriosDni = false;
 }
