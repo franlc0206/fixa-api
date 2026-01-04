@@ -22,10 +22,10 @@ public class TurnoRepositoryAdapter implements TurnoRepositoryPort {
     private final UsuarioJpaRepository usuarioRepo;
 
     public TurnoRepositoryAdapter(TurnoJpaRepository turnoRepo,
-                                  ServicioJpaRepository servicioRepo,
-                                  EmpleadoJpaRepository empleadoRepo,
-                                  EmpresaJpaRepository empresaRepo,
-                                  UsuarioJpaRepository usuarioRepo) {
+            ServicioJpaRepository servicioRepo,
+            EmpleadoJpaRepository empleadoRepo,
+            EmpresaJpaRepository empresaRepo,
+            UsuarioJpaRepository usuarioRepo) {
         this.turnoRepo = turnoRepo;
         this.servicioRepo = servicioRepo;
         this.empleadoRepo = empleadoRepo;
@@ -35,11 +35,18 @@ public class TurnoRepositoryAdapter implements TurnoRepositoryPort {
 
     @Override
     public Turno save(Turno turno) {
-        TurnoEntity entity = turno.getId() != null ? turnoRepo.findById(turno.getId()).orElse(new TurnoEntity()) : new TurnoEntity();
-        ServicioEntity servicio = turno.getServicioId() != null ? servicioRepo.findById(turno.getServicioId()).orElse(null) : null;
-        EmpleadoEntity empleado = turno.getEmpleadoId() != null ? empleadoRepo.findById(turno.getEmpleadoId()).orElse(null) : null;
-        EmpresaEntity empresa = turno.getEmpresaId() != null ? empresaRepo.findById(turno.getEmpresaId()).orElse(null) : null;
-        UsuarioEntity cliente = turno.getClienteId() != null ? usuarioRepo.findById(turno.getClienteId()).orElse(null) : null;
+        TurnoEntity entity = turno.getId() != null ? turnoRepo.findById(turno.getId()).orElse(new TurnoEntity())
+                : new TurnoEntity();
+        ServicioEntity servicio = turno.getServicioId() != null
+                ? servicioRepo.findById(turno.getServicioId()).orElse(null)
+                : null;
+        EmpleadoEntity empleado = turno.getEmpleadoId() != null
+                ? empleadoRepo.findById(turno.getEmpleadoId()).orElse(null)
+                : null;
+        EmpresaEntity empresa = turno.getEmpresaId() != null ? empresaRepo.findById(turno.getEmpresaId()).orElse(null)
+                : null;
+        UsuarioEntity cliente = turno.getClienteId() != null ? usuarioRepo.findById(turno.getClienteId()).orElse(null)
+                : null;
         TurnoMapper.copyToEntity(turno, entity, servicio, empleado, empresa, cliente);
         TurnoEntity saved = turnoRepo.save(entity);
         return TurnoMapper.toDomain(saved);
@@ -65,6 +72,15 @@ public class TurnoRepositoryAdapter implements TurnoRepositoryPort {
     @Override
     public List<Turno> findByClienteId(Long clienteId) {
         return turnoRepo.findByCliente_IdOrderByFechaHoraInicioDesc(clienteId)
+                .stream()
+                .map(TurnoMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Turno> findByEstadoAndFechaHoraFinBefore(String estado, LocalDateTime fecha) {
+        TurnoEstado estadoEnum = TurnoEstado.valueOf(estado);
+        return turnoRepo.findByEstadoAndFechaHoraFinBefore(estadoEnum, fecha)
                 .stream()
                 .map(TurnoMapper::toDomain)
                 .collect(Collectors.toList());
