@@ -1,24 +1,22 @@
 package com.fixa.fixa_api.application.service;
 
+import com.fixa.fixa_api.application.event.TurnoEvent;
 import com.fixa.fixa_api.application.usecase.AprobarTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CrearTurnoUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
+import com.fixa.fixa_api.domain.model.Empresa;
 import com.fixa.fixa_api.domain.repository.TurnoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
 import com.fixa.fixa_api.domain.repository.EmpleadoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ConfigReglaQueryPort;
-import com.fixa.fixa_api.domain.service.NotificationServicePort;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import com.fixa.fixa_api.domain.repository.DisponibilidadRepositoryPort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,7 +33,7 @@ public class TurnoCommandService
     private final EmpresaRepositoryPort empresaPort;
     private final ConfigReglaQueryPort configReglaPort;
     private final TurnoIntervaloCalculator turnoIntervaloCalculator;
-    private final NotificationServicePort notificationPort;
+    private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserService currentUserService;
     private final DisponibilidadRepositoryPort disponibilidadPort;
 
@@ -46,7 +44,7 @@ public class TurnoCommandService
             EmpresaRepositoryPort empresaPort,
             ConfigReglaQueryPort configReglaPort,
             TurnoIntervaloCalculator turnoIntervaloCalculator,
-            NotificationServicePort notificationPort,
+            ApplicationEventPublisher eventPublisher,
             CurrentUserService currentUserService,
             DisponibilidadRepositoryPort disponibilidadPort) {
         this.turnoPort = turnoPort;
@@ -55,7 +53,7 @@ public class TurnoCommandService
         this.empresaPort = empresaPort;
         this.configReglaPort = configReglaPort;
         this.turnoIntervaloCalculator = turnoIntervaloCalculator;
-        this.notificationPort = notificationPort;
+        this.eventPublisher = eventPublisher;
         this.currentUserService = currentUserService;
         this.disponibilidadPort = disponibilidadPort;
     }
@@ -76,10 +74,17 @@ public class TurnoCommandService
         // Cargar entidades requeridas
         var servicio = servicioPort.findById(turno.getServicioId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
-        var empleado = empleadoPort.findById(turno.getEmpleadoId())
+
+        // BLOQUEO PESIMISTA: Bloqueamos al empleado para serializar las creaciones de
+        // turnos para este profesional.
+        var empleado = empleadoPort.findByIdWithLock(turno.getEmpleadoId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
+
         var empresa = empresaPort.findById(turno.getEmpresaId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
+
+        // Validar campos obligatorios configurables
+        validarCamposObligatorios(empresa, turno);
 
         // Calcular fin según duración del servicio
         if (turno.getFechaHoraInicio() == null) {
@@ -104,13 +109,22 @@ public class TurnoCommandService
 
         // Setear estado inicial según reglas (empresa)
         turno.setEstado(empresa.isRequiereAprobacionTurno() ? "PENDIENTE" : "CONFIRMADO");
-        turno.setRequiereValidacion(empresa.isRequiereValidacionTelefono());
+
+        // La validación es OBLIGATORIA si el usuario NO está logueado (sesión JWT
+        // ausente).
+        // Incluso si encontramos un cliente por email, si no está logueado, verificamos
+        // para evitar suplantación.
+        boolean estaAutenticado = currentUserService.getCurrentUserId().isPresent();
+        turno.setRequiereValidacion(!estaAutenticado);
 
         // Persistir via puerto
         Turno guardado = turnoPort.save(turno);
 
-        // Notificar creación al cliente
-        enviarNotificacionCreacion(guardado, servicio, empresa);
+        // Notificar creación al cliente solo si no requiere validación inmediata
+        // Si requiere validación, el flujo de verificación enviará el código.
+        if (!guardado.isRequiereValidacion()) {
+            eventPublisher.publishEvent(new TurnoEvent(guardado, "CREACION"));
+        }
 
         return guardado;
     }
@@ -187,7 +201,7 @@ public class TurnoCommandService
             Turno guardado = turnoPort.save(t);
 
             // Notificar cambio
-            enviarNotificacionReprogramacion(guardado, servicio, empresa);
+            eventPublisher.publishEvent(new TurnoEvent(guardado, "REPROGRAMACION"));
 
             return guardado;
         } catch (ApiException e) {
@@ -213,7 +227,7 @@ public class TurnoCommandService
         t.setEstado("CONFIRMADO");
         Turno guardado = turnoPort.save(t);
 
-        enviarNotificacionAprobacion(guardado);
+        eventPublisher.publishEvent(new TurnoEvent(guardado, "APROBACION"));
 
         return guardado;
     }
@@ -254,7 +268,7 @@ public class TurnoCommandService
         }
         Turno guardado = turnoPort.save(t);
 
-        enviarNotificacionCancelacion(guardado, motivo);
+        eventPublisher.publishEvent(new TurnoEvent(guardado, "CANCELACION", motivo));
 
         return guardado;
     }
@@ -367,7 +381,6 @@ public class TurnoCommandService
         }
     }
 
-    // Sobrecarga para crear turno
     private void validarSolapamiento(Turno turno, com.fixa.fixa_api.domain.model.Servicio servicio, Long empleadoId,
             LocalDateTime inicio, LocalDateTime fin, Long turnoIdExcluido) {
         LocalDateTime ventanaInicio = inicio.minusHours(12);
@@ -395,90 +408,21 @@ public class TurnoCommandService
         }
     }
 
-    private void enviarNotificacionCreacion(Turno guardado, com.fixa.fixa_api.domain.model.Servicio servicio,
-            com.fixa.fixa_api.domain.model.Empresa empresa) {
-        try {
-            Map<String, String> vars = new HashMap<>();
-            vars.put("nombre", guardado.getClienteNombre());
-            vars.put("servicio", servicio.getNombre());
-            vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-            vars.put("empresa", empresa.getNombre());
-
-            String template = "Hola <b>{{nombre}}</b>, tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido registrado.\n\n"
-                    +
-                    "Estado actual: <b>" + guardado.getEstado() + "</b>";
-            notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
-        } catch (Exception e) {
-            // Loguear error pero no fallar la transacción
+    private void validarCamposObligatorios(Empresa empresa, Turno turno) {
+        if (empresa.isCamposObligatoriosNombre()
+                && (turno.getClienteNombre() == null || turno.getClienteNombre().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El nombre es obligatorio para esta empresa");
         }
-    }
-
-    private void enviarNotificacionReprogramacion(Turno guardado, com.fixa.fixa_api.domain.model.Servicio servicio,
-            com.fixa.fixa_api.domain.model.Empresa empresa) {
-        try {
-            Map<String, String> vars = new HashMap<>();
-            vars.put("nombre", guardado.getClienteNombre());
-            vars.put("servicio", servicio.getNombre());
-            vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-            vars.put("empresa", empresa.getNombre());
-
-            String template = "Hola <b>{{nombre}}</b>, tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> ha sido <b>REPROGRAMADO</b> para el día <b>{{fecha}}</b>.\n\n"
-                    +
-                    "Estado actual: <b>" + guardado.getEstado() + "</b>";
-            notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
-        } catch (Exception e) {
-            // Loguear error
+        if (empresa.isCamposObligatoriosApellido()
+                && (turno.getClienteApellido() == null || turno.getClienteApellido().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El apellido es obligatorio para esta empresa");
         }
-    }
-
-    private void enviarNotificacionAprobacion(Turno guardado) {
-        try {
-            var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);
-            var empresa = empresaPort.findById(guardado.getEmpresaId()).orElse(null);
-
-            Map<String, String> vars = new HashMap<>();
-            vars.put("nombre", guardado.getClienteNombre());
-            vars.put("servicio", servicio != null ? servicio.getNombre() : "Servicio");
-            vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-            vars.put("empresa", empresa != null ? empresa.getNombre() : "la empresa");
-
-            String template = "¡Buenas noticias <b>{{nombre}}</b>! Tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido <b>CONFIRMADO</b>.\n\n"
-                    +
-                    "¡Te esperamos!";
-            notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
-        } catch (Exception e) {
-            // Loguear error
+        if (empresa.isCamposObligatoriosTelefono()
+                && (turno.getClienteTelefono() == null || turno.getClienteTelefono().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El teléfono es obligatorio para esta empresa");
         }
-    }
-
-    private void enviarNotificacionCancelacion(Turno guardado, String motivo) {
-        try {
-            var currentUser = currentUserService.getCurrentUser().orElse(null);
-            var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);
-            var empresa = empresaPort.findById(guardado.getEmpresaId()).orElse(null);
-
-            Map<String, String> vars = new HashMap<>();
-            vars.put("nombre", guardado.getClienteNombre());
-            vars.put("servicio", servicio != null ? servicio.getNombre() : "Servicio");
-            vars.put("fecha", guardado.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-            vars.put("empresa", empresa != null ? empresa.getNombre() : "la empresa");
-            vars.put("motivo", motivo != null ? motivo : "No especificado");
-
-            if (currentUser != null && "CLIENTE".equalsIgnoreCase(currentUser.getRol())) {
-                // Notificar a la empresa
-                String template = "El turno de <b>{{nombre}}</b> para <b>{{servicio}}</b> el día <b>{{fecha}}</b> ha sido <b>CANCELADO</b> por el cliente.\n\n"
-                        +
-                        "Motivo: <i>{{motivo}}</i>";
-                notificationPort.sendEmail(empresa != null ? empresa.getEmail() : null, template, vars);
-            } else {
-                // Notificar al cliente (cancelado por empresa o empleado)
-                String template = "Hola <b>{{nombre}}</b>, lamentamos informarte que tu turno para <b>{{servicio}}</b> en <b>{{empresa}}</b> el día <b>{{fecha}}</b> ha sido <b>CANCELADO</b>.\n\n"
-                        +
-                        "Motivo: <i>{{motivo}}</i>";
-                notificationPort.sendEmail(guardado.getClienteEmail(), template, vars);
-            }
-        } catch (Exception e) {
-            // Loguear error
+        if (empresa.isCamposObligatoriosDni() && (turno.getClienteDni() == null || turno.getClienteDni().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El DNI es obligatorio para esta empresa");
         }
     }
 }

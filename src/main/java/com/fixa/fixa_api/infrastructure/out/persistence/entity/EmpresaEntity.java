@@ -59,10 +59,29 @@ public class EmpresaEntity {
     @Column(name = "visibilidad_publica")
     private boolean visibilidadPublica;
 
+    @Column(name = "latitud", columnDefinition = "DECIMAL(10,8)")
+    private Double latitud;
+
+    @Column(name = "longitud", columnDefinition = "DECIMAL(11,8)")
+    private Double longitud;
+
     @Column(name = "activo")
     private boolean activo;
 
     @ManyToOne
     @JoinColumn(name = "plan_actual_id")
     private com.fixa.fixa_api.infrastructure.out.persistence.entity.PlanEntity planActual;
+
+    // Configuración de campos obligatorios para reserva
+    @Column(name = "campos_obligatorios_nombre")
+    private Boolean camposObligatoriosNombre = true; // Por defecto true para compatibilidad
+
+    @Column(name = "campos_obligatorios_apellido")
+    private Boolean camposObligatoriosApellido = false;
+
+    @Column(name = "campos_obligatorios_telefono")
+    private Boolean camposObligatoriosTelefono = true; // Por defecto true para compatibilidad
+
+    @Column(name = "campos_obligatorios_dni")
+    private Boolean camposObligatoriosDni = false;
 }

@@ -22,7 +22,8 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
     private final EmpresaJpaRepository empresaRepo;
     private final UsuarioJpaRepository usuarioRepo;
 
-    public EmpleadoRepositoryAdapter(EmpleadoJpaRepository empleadoRepo, EmpresaJpaRepository empresaRepo, UsuarioJpaRepository usuarioRepo) {
+    public EmpleadoRepositoryAdapter(EmpleadoJpaRepository empleadoRepo, EmpresaJpaRepository empresaRepo,
+            UsuarioJpaRepository usuarioRepo) {
         this.empleadoRepo = empleadoRepo;
         this.empresaRepo = empresaRepo;
         this.usuarioRepo = usuarioRepo;
@@ -30,7 +31,8 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
 
     @Override
     public List<Empleado> findByEmpresaId(Long empresaId) {
-        return empleadoRepo.findByEmpresa_Id(empresaId).stream().map(EmpleadoMapper::toDomain).collect(Collectors.toList());
+        return empleadoRepo.findByEmpresa_Id(empresaId).stream().map(EmpleadoMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -48,7 +50,9 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
 
     @Override
     public Empleado save(Empleado empleado) {
-        EmpleadoEntity entity = empleado.getId() != null ? empleadoRepo.findById(empleado.getId()).orElse(new EmpleadoEntity()) : new EmpleadoEntity();
+        EmpleadoEntity entity = empleado.getId() != null
+                ? empleadoRepo.findById(empleado.getId()).orElse(new EmpleadoEntity())
+                : new EmpleadoEntity();
         EmpresaEntity empresa = null;
         if (empleado.getEmpresaId() != null) {
             empresa = empresaRepo.findById(empleado.getEmpresaId()).orElse(null);
@@ -86,5 +90,10 @@ public class EmpleadoRepositoryAdapter implements EmpleadoRepositoryPort {
                 .stream()
                 .map(EmpleadoMapper::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Empleado> findByIdWithLock(Long id) {
+        return empleadoRepo.findByIdWithLock(id).map(EmpleadoMapper::toDomain);
     }
 }

@@ -6,8 +6,11 @@ import com.fixa.fixa_api.domain.model.Turno;
 import com.fixa.fixa_api.domain.model.VerificacionTelefono;
 import com.fixa.fixa_api.domain.repository.TurnoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.VerificacionTelefonoRepositoryPort;
+import com.fixa.fixa_api.domain.service.NotificationServicePort;
 import com.fixa.fixa_api.domain.service.SmsServicePort;
+import com.fixa.fixa_api.application.event.TurnoEvent;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +21,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Servicio de aplicación que implementa los use cases de verificación telefónica.
+ * Servicio de aplicación que implementa los use cases de verificación
+ * telefónica.
  * Siguiendo arquitectura hexagonal, este servicio:
  * - Solo depende de puertos (interfaces) del dominio
  * - No conoce detalles de implementación de infraestructura
@@ -34,6 +38,8 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
 
     private final VerificacionTelefonoRepositoryPort verificacionPort;
     private final SmsServicePort smsService;
+    private final NotificationServicePort notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TurnoRepositoryPort turnoPort;
 
     // Rate limiting simple en memoria (en producción usar Redis)
@@ -42,34 +48,48 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
     public VerificacionTelefonoService(
             VerificacionTelefonoRepositoryPort verificacionPort,
             SmsServicePort smsService,
+            NotificationServicePort notificationService,
+            ApplicationEventPublisher eventPublisher,
             TurnoRepositoryPort turnoPort) {
         this.verificacionPort = verificacionPort;
         this.smsService = smsService;
+        this.notificationService = notificationService;
+        this.eventPublisher = eventPublisher;
         this.turnoPort = turnoPort;
     }
 
     @Override
     @Transactional
-    public VerificacionTelefono ejecutar(String telefono, String canal, Long turnoId) {
-        // Validar teléfono
-        if (telefono == null || telefono.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El teléfono es requerido");
-        }
-
+    public VerificacionTelefono ejecutar(String telefono, String email, String canal, Long turnoId) {
         // Validar canal
-        if (canal == null || (!canal.equalsIgnoreCase("sms") && !canal.equalsIgnoreCase("whatsapp"))) {
+        if (canal == null || (!canal.equalsIgnoreCase("sms") &&
+                !canal.equalsIgnoreCase("whatsapp") &&
+                !canal.equalsIgnoreCase("email"))) {
             canal = "sms"; // default
         }
 
+        // Validar destino según canal
+        if (canal.equalsIgnoreCase("email")) {
+            if (email == null || email.isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "El email es requerido para este canal");
+            }
+        } else {
+            if (telefono == null || telefono.isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "El teléfono es requerido para este canal");
+            }
+        }
+
         // Rate limiting: verificar intentos recientes
-        validarRateLimit(telefono);
-        
+        String destino = canal.equalsIgnoreCase("email") ? email : telefono;
+        validarRateLimit(destino);
+
         // Generar código aleatorio de 6 dígitos
         String codigo = generarCodigoAleatorio();
 
         // Crear verificación
         VerificacionTelefono verificacion = new VerificacionTelefono();
         verificacion.setTelefono(telefono);
+        verificacion.setEmail(email);
         verificacion.setCodigo(codigo);
         verificacion.setCanal(canal.toLowerCase());
         verificacion.setFechaEnvio(LocalDateTime.now());
@@ -80,16 +100,21 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
         // Persistir
         VerificacionTelefono guardada = verificacionPort.save(verificacion);
 
-        // Enviar SMS/WhatsApp
-        boolean enviado = smsService.enviarCodigoVerificacion(telefono, codigo, canal);
-        
+        // Enviar según canal
+        boolean enviado = false;
+        if (canal.equalsIgnoreCase("email")) {
+            enviado = enviarEmailVerificacion(email, codigo);
+        } else {
+            enviado = smsService.enviarCodigoVerificacion(telefono, codigo, canal);
+        }
+
         if (!enviado) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, 
-                "No se pudo enviar el código de verificación. Por favor, intenta nuevamente.");
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "No se pudo enviar el código de verificación. Por favor, intenta nuevamente.");
         }
 
         // Registrar intento en rate limit
-        registrarIntento(telefono);
+        registrarIntento(destino);
 
         return guardada;
     }
@@ -126,17 +151,33 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Turno no encontrado"));
 
             turno.setTelefonoValidado(true);
-            
-            // Si el turno estaba pendiente por validación, cambiar a CONFIRMADO o PENDIENTE según regla de empresa
+
+            // Si el turno estaba pendiente por validación, cambiar a CONFIRMADO o PENDIENTE
+            // según regla de empresa
             // Por ahora, si requería validación y ya está validado, lo confirmamos
             if ("PENDIENTE".equalsIgnoreCase(turno.getEstado()) && turno.isRequiereValidacion()) {
                 turno.setEstado("CONFIRMADO");
             }
-            
+
             turnoPort.save(turno);
+
+            // Notificar al cliente que su turno ha sido confirmado/registrado exitosamente
+            eventPublisher.publishEvent(new TurnoEvent(turno, "CREACION"));
         }
 
         return actualizada;
+    }
+
+    private boolean enviarEmailVerificacion(String email, String codigo) {
+        try {
+            String template = "Tu código de verificación para Fixe es: <b>" + codigo + "</b>\n\n" +
+                    "Este código expirará en " + EXPIRACION_MINUTOS + " minutos.";
+
+            notificationService.sendEmail(email, template, Map.of("codigo", codigo));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -154,7 +195,7 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
      */
     private void validarRateLimit(String telefono) {
         RateLimitInfo info = rateLimitCache.get(telefono);
-        
+
         if (info == null) {
             return; // Primera vez, permitir
         }
@@ -165,8 +206,9 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
 
         // Validar límite
         if (info.getIntentos() >= MAX_INTENTOS) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, 
-                "Demasiados intentos. Por favor, espera " + RATE_LIMIT_MINUTOS + " minutos antes de intentar nuevamente.");
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Demasiados intentos. Por favor, espera " + RATE_LIMIT_MINUTOS
+                            + " minutos antes de intentar nuevamente.");
         }
     }
 

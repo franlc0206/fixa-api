@@ -7,11 +7,20 @@ import java.util.Optional;
 
 public interface EmpleadoRepositoryPort {
     List<Empleado> findByEmpresaId(Long empresaId);
+
     List<Empleado> findPublicosByEmpresaId(Long empresaId);
+
     Optional<Empleado> findById(Long id);
+
     Empleado save(Empleado empleado);
+
     void deleteById(Long id);
+
     boolean existsById(Long id);
+
     List<Empleado> findActivosSinUsuarioPorEmail(String email);
+
     List<Empleado> findByUsuarioId(Long usuarioId);
+
+    Optional<Empleado> findByIdWithLock(Long id);
 }

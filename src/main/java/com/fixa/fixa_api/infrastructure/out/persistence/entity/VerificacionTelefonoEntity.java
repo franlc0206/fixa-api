@@ -17,6 +17,9 @@ public class VerificacionTelefonoEntity {
     @Column(length = 30)
     private String telefono;
 
+    @Column(length = 255)
+    private String email;
+
     @Column(length = 10)
     private String codigo;
 

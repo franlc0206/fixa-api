@@ -27,10 +27,16 @@ public class EmpresaMapper {
         d.setRequiereAprobacionTurno(e.isRequiereAprobacionTurno());
         d.setMensajeValidacionPersonalizado(e.getMensajeValidacionPersonalizado());
         d.setVisibilidadPublica(e.isVisibilidadPublica());
+        d.setLatitud(e.getLatitud());
+        d.setLongitud(e.getLongitud());
         d.setActivo(e.isActivo());
         if (e.getPlanActual() != null) {
             d.setPlanActualId(e.getPlanActual().getId());
         }
+        d.setCamposObligatoriosNombre(e.getCamposObligatoriosNombre() == null || e.getCamposObligatoriosNombre());
+        d.setCamposObligatoriosApellido(Boolean.TRUE.equals(e.getCamposObligatoriosApellido()));
+        d.setCamposObligatoriosTelefono(e.getCamposObligatoriosTelefono() == null || e.getCamposObligatoriosTelefono());
+        d.setCamposObligatoriosDni(Boolean.TRUE.equals(e.getCamposObligatoriosDni()));
         return d;
     }
 
@@ -49,9 +55,15 @@ public class EmpresaMapper {
         e.setRequiereAprobacionTurno(d.isRequiereAprobacionTurno());
         e.setMensajeValidacionPersonalizado(d.getMensajeValidacionPersonalizado());
         e.setVisibilidadPublica(d.isVisibilidadPublica());
+        e.setLatitud(d.getLatitud());
+        e.setLongitud(d.getLongitud());
         e.setActivo(d.isActivo());
         e.setCategoria(categoria);
         e.setUsuarioAdmin(admin);
         e.setPlanActual(plan);
+        e.setCamposObligatoriosNombre(d.isCamposObligatoriosNombre());
+        e.setCamposObligatoriosApellido(d.isCamposObligatoriosApellido());
+        e.setCamposObligatoriosTelefono(d.isCamposObligatoriosTelefono());
+        e.setCamposObligatoriosDni(d.isCamposObligatoriosDni());
     }
 }

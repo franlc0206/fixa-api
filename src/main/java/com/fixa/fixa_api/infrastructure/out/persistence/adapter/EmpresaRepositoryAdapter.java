@@ -99,4 +99,39 @@ public class EmpresaRepositoryAdapter implements EmpresaRepositoryPort {
         return empresaRepo.findByVisibilidadPublicaTrue().stream().map(EmpresaMapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Empresa> findCercanas(double latitud, double longitud, double radioKm) {
+        // Obtenemos la proyección con la distancia calculada
+        List<com.fixa.fixa_api.infrastructure.out.persistence.projection.EmpresaCercanaProjection> proyecciones = empresaRepo
+                .findCercanas(latitud, longitud, radioKm);
+
+        return proyecciones.stream().map(proj -> {
+            Empresa empresa = new Empresa();
+            empresa.setId(proj.getId());
+            empresa.setNombre(proj.getNombre());
+            empresa.setSlug(proj.getSlug());
+            empresa.setDescripcion(proj.getDescripcion());
+            empresa.setDireccion(proj.getDireccion());
+            empresa.setTelefono(proj.getTelefono());
+            empresa.setEmail(proj.getEmail());
+            empresa.setBannerUrl(proj.getBannerUrl());
+            empresa.setLogoUrl(proj.getLogoUrl());
+            empresa.setVisibilidadPublica(Boolean.TRUE.equals(proj.getVisibilidadPublica()));
+            empresa.setActivo(Boolean.TRUE.equals(proj.getActivo()));
+            empresa.setLatitud(proj.getLatitud());
+            empresa.setLongitud(proj.getLongitud());
+            empresa.setDistancia(proj.getDistancia()); // Setear distancia calculada
+
+            // Mapear IDs de relaciones si es necesario
+            empresa.setCategoriaId(proj.getCategoriaId());
+            // Nota: AdminId y PlanActualId podrían no estar disponibles en la proyección
+            // simple si no se incluyen en el SELECT.
+            // Para el caso de uso "cercanos", generalmente no necesitamos el usuario admin
+            // ni el plan detallado.
+            // Si son necesarios, deberíamos agregarlos a la Query y Proyección.
+
+            return empresa;
+        }).collect(Collectors.toList());
+    }
 }
