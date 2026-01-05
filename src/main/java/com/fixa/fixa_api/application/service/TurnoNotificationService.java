@@ -5,7 +5,11 @@ import com.fixa.fixa_api.domain.repository.EmpresaRepositoryPort;
 import com.fixa.fixa_api.domain.repository.ServicioRepositoryPort;
 import com.fixa.fixa_api.domain.service.NotificationServicePort;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+import com.fixa.fixa_api.application.event.TurnoEvent;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -30,7 +34,23 @@ public class TurnoNotificationService {
         this.currentUserService = currentUserService;
     }
 
-    public void enviarNotificacionCreacion(Turno guardado) {
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleTurnoEvent(TurnoEvent event) {
+        String tipo = event.getTipo();
+        Turno turno = event.getTurno();
+
+        switch (tipo) {
+            case "CREACION" -> enviarNotificacionCreacion(turno);
+            case "REPROGRAMACION" -> enviarNotificacionReprogramacion(turno);
+            case "APROBACION" -> enviarNotificacionAprobacion(turno);
+            case "CANCELACION" -> enviarNotificacionCancelacion(turno, event.getMotivo());
+            default -> {
+            }
+        }
+    }
+
+    private void enviarNotificacionCreacion(Turno guardado) {
         try {
             var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);
             var empresa = empresaPort.findById(guardado.getEmpresaId()).orElse(null);
@@ -52,7 +72,7 @@ public class TurnoNotificationService {
         }
     }
 
-    public void enviarNotificacionReprogramacion(Turno guardado) {
+    private void enviarNotificacionReprogramacion(Turno guardado) {
         try {
             var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);
             var empresa = empresaPort.findById(guardado.getEmpresaId()).orElse(null);
@@ -74,7 +94,7 @@ public class TurnoNotificationService {
         }
     }
 
-    public void enviarNotificacionAprobacion(Turno guardado) {
+    private void enviarNotificacionAprobacion(Turno guardado) {
         try {
             var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);
             var empresa = empresaPort.findById(guardado.getEmpresaId()).orElse(null);
@@ -93,7 +113,7 @@ public class TurnoNotificationService {
         }
     }
 
-    public void enviarNotificacionCancelacion(Turno guardado, String motivo) {
+    private void enviarNotificacionCancelacion(Turno guardado, String motivo) {
         try {
             var currentUser = currentUserService.getCurrentUser().orElse(null);
             var servicio = servicioPort.findById(guardado.getServicioId()).orElse(null);

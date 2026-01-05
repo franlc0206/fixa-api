@@ -8,7 +8,9 @@ import com.fixa.fixa_api.domain.repository.TurnoRepositoryPort;
 import com.fixa.fixa_api.domain.repository.VerificacionTelefonoRepositoryPort;
 import com.fixa.fixa_api.domain.service.NotificationServicePort;
 import com.fixa.fixa_api.domain.service.SmsServicePort;
+import com.fixa.fixa_api.application.event.TurnoEvent;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +39,7 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
     private final VerificacionTelefonoRepositoryPort verificacionPort;
     private final SmsServicePort smsService;
     private final NotificationServicePort notificationService;
-    private final TurnoNotificationService turnoNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TurnoRepositoryPort turnoPort;
 
     // Rate limiting simple en memoria (en producción usar Redis)
@@ -47,12 +49,12 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
             VerificacionTelefonoRepositoryPort verificacionPort,
             SmsServicePort smsService,
             NotificationServicePort notificationService,
-            TurnoNotificationService turnoNotificationService,
+            ApplicationEventPublisher eventPublisher,
             TurnoRepositoryPort turnoPort) {
         this.verificacionPort = verificacionPort;
         this.smsService = smsService;
         this.notificationService = notificationService;
-        this.turnoNotificationService = turnoNotificationService;
+        this.eventPublisher = eventPublisher;
         this.turnoPort = turnoPort;
     }
 
@@ -160,7 +162,7 @@ public class VerificacionTelefonoService implements CrearVerificacionUseCase, Co
             turnoPort.save(turno);
 
             // Notificar al cliente que su turno ha sido confirmado/registrado exitosamente
-            turnoNotificationService.enviarNotificacionCreacion(turno);
+            eventPublisher.publishEvent(new TurnoEvent(turno, "CREACION"));
         }
 
         return actualizada;

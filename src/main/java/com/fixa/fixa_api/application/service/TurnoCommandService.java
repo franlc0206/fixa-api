@@ -1,5 +1,6 @@
 package com.fixa.fixa_api.application.service;
 
+import com.fixa.fixa_api.application.event.TurnoEvent;
 import com.fixa.fixa_api.application.usecase.AprobarTurnoUseCase;
 import com.fixa.fixa_api.application.usecase.CrearTurnoUseCase;
 import com.fixa.fixa_api.domain.model.Turno;
@@ -12,6 +13,7 @@ import com.fixa.fixa_api.domain.repository.ConfigReglaQueryPort;
 import com.fixa.fixa_api.infrastructure.in.web.error.ApiException;
 import com.fixa.fixa_api.infrastructure.security.CurrentUserService;
 import com.fixa.fixa_api.domain.repository.DisponibilidadRepositoryPort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +33,7 @@ public class TurnoCommandService
     private final EmpresaRepositoryPort empresaPort;
     private final ConfigReglaQueryPort configReglaPort;
     private final TurnoIntervaloCalculator turnoIntervaloCalculator;
-    private final TurnoNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final CurrentUserService currentUserService;
     private final DisponibilidadRepositoryPort disponibilidadPort;
 
@@ -42,7 +44,7 @@ public class TurnoCommandService
             EmpresaRepositoryPort empresaPort,
             ConfigReglaQueryPort configReglaPort,
             TurnoIntervaloCalculator turnoIntervaloCalculator,
-            TurnoNotificationService notificationService,
+            ApplicationEventPublisher eventPublisher,
             CurrentUserService currentUserService,
             DisponibilidadRepositoryPort disponibilidadPort) {
         this.turnoPort = turnoPort;
@@ -51,7 +53,7 @@ public class TurnoCommandService
         this.empresaPort = empresaPort;
         this.configReglaPort = configReglaPort;
         this.turnoIntervaloCalculator = turnoIntervaloCalculator;
-        this.notificationService = notificationService;
+        this.eventPublisher = eventPublisher;
         this.currentUserService = currentUserService;
         this.disponibilidadPort = disponibilidadPort;
     }
@@ -72,8 +74,12 @@ public class TurnoCommandService
         // Cargar entidades requeridas
         var servicio = servicioPort.findById(turno.getServicioId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Servicio no encontrado"));
-        var empleado = empleadoPort.findById(turno.getEmpleadoId())
+
+        // BLOQUEO PESIMISTA: Bloqueamos al empleado para serializar las creaciones de
+        // turnos para este profesional.
+        var empleado = empleadoPort.findByIdWithLock(turno.getEmpleadoId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado"));
+
         var empresa = empresaPort.findById(turno.getEmpresaId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Empresa no encontrada"));
 
@@ -117,7 +123,7 @@ public class TurnoCommandService
         // Notificar creación al cliente solo si no requiere validación inmediata
         // Si requiere validación, el flujo de verificación enviará el código.
         if (!guardado.isRequiereValidacion()) {
-            notificationService.enviarNotificacionCreacion(guardado);
+            eventPublisher.publishEvent(new TurnoEvent(guardado, "CREACION"));
         }
 
         return guardado;
@@ -195,7 +201,7 @@ public class TurnoCommandService
             Turno guardado = turnoPort.save(t);
 
             // Notificar cambio
-            notificationService.enviarNotificacionReprogramacion(guardado);
+            eventPublisher.publishEvent(new TurnoEvent(guardado, "REPROGRAMACION"));
 
             return guardado;
         } catch (ApiException e) {
@@ -221,7 +227,7 @@ public class TurnoCommandService
         t.setEstado("CONFIRMADO");
         Turno guardado = turnoPort.save(t);
 
-        notificationService.enviarNotificacionAprobacion(guardado);
+        eventPublisher.publishEvent(new TurnoEvent(guardado, "APROBACION"));
 
         return guardado;
     }
@@ -262,7 +268,7 @@ public class TurnoCommandService
         }
         Turno guardado = turnoPort.save(t);
 
-        notificationService.enviarNotificacionCancelacion(guardado, motivo);
+        eventPublisher.publishEvent(new TurnoEvent(guardado, "CANCELACION", motivo));
 
         return guardado;
     }
