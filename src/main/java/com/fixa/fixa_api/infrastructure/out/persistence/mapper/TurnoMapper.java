@@ -38,6 +38,7 @@ public class TurnoMapper {
         if (e.getEmpresa() != null) {
             d.setEmpresaNombre(e.getEmpresa().getNombre());
             d.setEmpresaLogoUrl(e.getEmpresa().getLogoUrl());
+            d.setEmpresaDireccion(e.getEmpresa().getDireccion());
         }
         if (e.getEmpleado() != null) {
             String nombreCompleto = (e.getEmpleado().getNombre() != null ? e.getEmpleado().getNombre() : "") + " " +

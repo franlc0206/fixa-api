@@ -117,28 +117,20 @@ public class UploadController {
 
         switch (tipo) {
             case "EMPRESA_BANNER" -> {
-                if (req.getEmpresaId() == null) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "empresaId requerido para tipo EMPRESA_BANNER");
-                }
-                return "empresas/" + req.getEmpresaId() + "/banner-" + randomId + "." + ext;
+                String prefix = req.getEmpresaId() != null ? "empresas/" + req.getEmpresaId() : "empresas/pending";
+                return prefix + "/banner-" + randomId + "." + ext;
             }
             case "EMPLEADO_FOTO" -> {
-                if (req.getEmpleadoId() == null) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "empleadoId requerido para tipo EMPLEADO_FOTO");
-                }
-                return "empleados/" + req.getEmpleadoId() + "-" + randomId + "." + ext;
+                String prefix = req.getEmpleadoId() != null ? "empleados/" + req.getEmpleadoId() : "empleados/pending";
+                return prefix + "-" + randomId + "." + ext;
             }
             case "SERVICIO_FOTO" -> {
-                if (req.getServicioId() == null) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "servicioId requerido para tipo SERVICIO_FOTO");
-                }
-                return "servicios/" + req.getServicioId() + "-" + randomId + "." + ext;
+                String prefix = req.getServicioId() != null ? "servicios/" + req.getServicioId() : "servicios/pending";
+                return prefix + "-" + randomId + "." + ext;
             }
             case "EMPRESA_LOGO" -> {
-                if (req.getEmpresaId() == null) {
-                    throw new ApiException(HttpStatus.BAD_REQUEST, "empresaId requerido para tipo EMPRESA_LOGO");
-                }
-                return "empresas/" + req.getEmpresaId() + "/logo-" + randomId + "." + ext;
+                String prefix = req.getEmpresaId() != null ? "empresas/" + req.getEmpresaId() : "empresas/pending";
+                return prefix + "/logo-" + randomId + "." + ext;
             }
             case "CATEGORIA_FOTO_DEFAULT" -> {
                 if (req.getCategoriaId() == null) {

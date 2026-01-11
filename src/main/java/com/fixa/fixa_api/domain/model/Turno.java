@@ -28,4 +28,5 @@ public class Turno {
     private String empleadoNombre;
     private String empresaNombre;
     private String empresaLogoUrl;
+    private String empresaDireccion;
 }

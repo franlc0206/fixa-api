@@ -23,6 +23,7 @@ public class TurnoMeResponse {
     private boolean requiereValidacion;
     private String observaciones;
     private boolean yaValorado;
+    private String empresaDireccion;
 
     // Nombres enriched
     private String servicioNombre;
@@ -55,6 +56,7 @@ public class TurnoMeResponse {
         dto.setEmpleadoNombre(turno.getEmpleadoNombre());
         dto.setEmpresaNombre(turno.getEmpresaNombre());
         dto.setEmpresaLogoUrl(turno.getEmpresaLogoUrl());
+        dto.setEmpresaDireccion(turno.getEmpresaDireccion());
         dto.setPrecio(turno.getPrecio());
 
         return dto;
@@ -91,6 +93,14 @@ public class TurnoMeResponse {
 
     public void setEmpresaLogoUrl(String empresaLogoUrl) {
         this.empresaLogoUrl = empresaLogoUrl;
+    }
+
+    public String getEmpresaDireccion() {
+        return empresaDireccion;
+    }
+
+    public void setEmpresaDireccion(String empresaDireccion) {
+        this.empresaDireccion = empresaDireccion;
     }
 
     public java.math.BigDecimal getPrecio() {
