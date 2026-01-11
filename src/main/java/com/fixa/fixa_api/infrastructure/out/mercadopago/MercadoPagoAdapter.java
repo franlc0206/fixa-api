@@ -46,10 +46,17 @@ public class MercadoPagoAdapter implements MercadoPagoPort {
     }
 
     @Override
-    @SuppressWarnings("null")
     public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId) {
+        // Default behavior: external_reference = userId:planId
+        return createPreapprovalLink(userEmail, userId, planId, mpPlanId, userId + ":" + planId);
+    }
+
+    @Override
+    @SuppressWarnings("null")
+    public String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId,
+            String externalReference) {
         try {
-            String externalRef = userId + ":" + planId;
+            String externalRef = externalReference;
             String computedBackUrl = (backUrl != null && !backUrl.isBlank()) ? backUrl : "https://fixe.com.ar";
 
             // DOC NOTE: According to documentation, subscriptions with

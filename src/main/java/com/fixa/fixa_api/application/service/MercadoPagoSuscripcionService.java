@@ -12,6 +12,7 @@ import com.fixa.fixa_api.infrastructure.out.persistence.entity.MpScheduledNotifi
 import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpNotificationLogJpaRepository;
 import com.fixa.fixa_api.infrastructure.out.persistence.repository.MpScheduledNotificationRepository;
 import com.fixa.fixa_api.domain.service.NotificationServicePort;
+import com.fixa.fixa_api.application.util.HmacUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -71,8 +72,31 @@ public class MercadoPagoSuscripcionService {
 
         String emailToUse = (payerEmail != null && !payerEmail.isBlank()) ? payerEmail : usuario.getEmail();
 
+        String externalRef = usuarioId + ":" + planId;
+        if (webhookSecret != null && !webhookSecret.isBlank()) {
+            String signature = HmacUtils.sign(externalRef, webhookSecret);
+            externalRef = externalRef + ":" + signature;
+        }
+
         String link = mercadoPagoPort.createPreapprovalLink(emailToUse, usuarioId, planId,
-                plan.getMercadopagoPlanId());
+                plan.getMercadopagoPlanId(), externalRef); // Assuming createPreapprovalLink allows overriding extRef or
+                                                           // we pass it via specialized method?
+        // Wait, the current createPreapprovalLink signature takes (email, uId, pId,
+        // mpPlanId).
+        // I need to check if I can pass the FULL externalRef.
+        // If not, I should modify MercadoPagoPort. Assuming for now I can pass it or
+        // the port constructs it.
+        // Actually, looking at line 74:
+        // mercadoPagoPort.createPreapprovalLink(emailToUse, usuarioId, planId,
+        // plan.getMercadopagoPlanId());
+        // It seems the Port builds the external_reference internally. I should probably
+        // check that.
+        // If I cannot change the port right now, I might be blocked.
+        // Let's assume I need to modify the Port too. But first let's see if I can pass
+        // strict externalRef.
+        // If the Port builds "userId:planId", I can't inject the signature here without
+        // changing the Port interface.
+        // Let's hold on this chunk and check MercadoPagoPort first.
         if (link == null) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "No se pudo generar el link de pago con Mercado Pago.");
@@ -246,10 +270,35 @@ public class MercadoPagoSuscripcionService {
         if (externalRef != null && externalRef.contains(":")) {
             try {
                 String[] parts = externalRef.split(":");
-                usuarioId = Long.parseLong(parts[0]);
-                planId = Long.parseLong(parts[1]);
-                log.info("Usuario {} y Plan {} recuperados exitosamente desde el PAGO {}", usuarioId, planId,
-                        paymentId);
+                // VALIDACIÓN DE FIRMA HMAC
+                if (parts.length == 3) {
+                    usuarioId = Long.parseLong(parts[0]);
+                    planId = Long.parseLong(parts[1]);
+                    String signature = parts[2];
+
+                    if (webhookSecret != null && !webhookSecret.isBlank()) {
+                        String dataToVerify = parts[0] + ":" + parts[1];
+                        if (!HmacUtils.validate(dataToVerify, signature, webhookSecret)) {
+                            log.error(
+                                    "ALERTA DE SEGURIDAD: Firma de external_reference INVÁLIDA en pago {}. Data: {}, Sig: {}",
+                                    paymentId, dataToVerify, signature);
+                            // IMPORTANTE: Detenemos procesamiento para evitar IDOR
+                            return;
+                        } else {
+                            log.info("Firma de external_reference verificada correctamente.");
+                        }
+                    }
+
+                    log.info("Usuario {} y Plan {} recuperados exitosamente desde el PAGO {} (Firmado)", usuarioId,
+                            planId,
+                            paymentId);
+                } else {
+                    // LEGACY SUPPORT (2 partes)
+                    usuarioId = Long.parseLong(parts[0]);
+                    planId = Long.parseLong(parts[1]);
+                    log.warn("Referencia sin firmar en pago {}: {}. Aceptado por compatibilidad legacy.", paymentId,
+                            externalRef);
+                }
             } catch (Exception e) {
                 log.warn("Error parseando external_reference del pago: {}. Error: {}", externalRef, e.getMessage());
             }
@@ -303,8 +352,29 @@ public class MercadoPagoSuscripcionService {
 
         if (externalRef != null && externalRef.contains(":")) {
             String[] parts = externalRef.split(":");
-            usuarioId = Long.parseLong(parts[0]);
-            planId = Long.parseLong(parts[1]);
+            try {
+                if (parts.length == 3) {
+                    usuarioId = Long.parseLong(parts[0]);
+                    planId = Long.parseLong(parts[1]);
+                    String signature = parts[2];
+
+                    if (webhookSecret != null && !webhookSecret.isBlank()) {
+                        String dataToVerify = parts[0] + ":" + parts[1];
+                        if (!HmacUtils.validate(dataToVerify, signature, webhookSecret)) {
+                            log.error("ALERTA DE SEGURIDAD: Firma INVÁLIDA en suscripción {}. Ref: {}", preapprovalId,
+                                    externalRef);
+                            return;
+                        }
+                        log.info("Firma verificada en suscripción {}", preapprovalId);
+                    }
+                } else if (parts.length == 2) {
+                    usuarioId = Long.parseLong(parts[0]);
+                    planId = Long.parseLong(parts[1]);
+                    log.warn("Suscripción {} con referencia legacy no firmada.", preapprovalId);
+                }
+            } catch (NumberFormatException e) {
+                log.warn("Error parseando ID en externalRef: {}", externalRef);
+            }
         } else {
             // FALLBACK 1: Intentar por metadata (más robusto que el email y la referencia
             // externa en V2)

@@ -6,6 +6,8 @@ import java.util.Optional;
 public interface MercadoPagoPort {
     String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId);
 
+    String createPreapprovalLink(String userEmail, Long userId, Long planId, String mpPlanId, String externalReference);
+
     Optional<Map<String, Object>> getPreapproval(String preapprovalId);
 
     Optional<Map<String, Object>> getPayment(String paymentId);

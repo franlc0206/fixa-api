@@ -78,6 +78,23 @@ src/main/java/com/fixa/fixa_api/
 ## Seguridad
 
 - `SecurityConfig` básico para MVP. Endurecer en fases siguientes.
+- **Actuator Security**: Los endpoints de gestión (`/actuator`) están restringidos. Solo `health`, `info`, `metrics` y `prometheus` son públicos. NO exponer `env` o `beans` sin proteger.
+
+### Prácticas de Seguridad Avanzada
+
+#### 1. Firmas Criptográficas (HMAC)
+Para prevenir **IDOR** y manipulación de parámetros en integraciones críticas (ej: Pagos), usamos firmas HMAC-SHA256.
+- **Utilidad**: `com.fixa.fixa_api.application.util.HmacUtils`.
+- **Uso**: Al generar links de pago o referencias externas, firmar concatenando los IDs sensibles + clave secreta.
+- **Validación**: Al recibir Webhooks, recalcular la firma y rechazar si no coincide.
+
+#### 2. Gestión de Secretos
+- **NUNCA** commitear credenciales, API Keys o Secretos en el código.
+- Usar `Environment Variables` inyectadas en `application.yml`.
+- Si necesitas un nuevo secreto, agrégalo a `.env.example` (sin valor real) y configúralo en el servidor.
+
+#### 3. Auditoría de Dependencias
+- Ejecutar regularmente `mvn dependency:check` para detectar CVEs en librerías de terceros.
 
 ### Modelo de Roles y permisos
 
